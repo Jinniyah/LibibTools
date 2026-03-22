@@ -11,7 +11,7 @@ Usage:
     python chirp_to_libib.py [options]
 
     Options:
-        --first-page-only     Only scrape the first page of your library.
+        --pages N             Only scrape the first N pages (omit to scrape all pages).
         --dry-run             Scrape and look up ISBNs, but do not write a CSV.
         --output-dir PATH     Directory to write the CSV to (default: current directory).
 
@@ -56,9 +56,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 # CONFIGURATION
 # ==========================
 
-# Overridden at runtime by --first-page-only flag.
-SCRAPE_ALL_PAGES: bool = True
-
 # Seconds to pause between Open Library ISBN requests.
 ISBN_REQUEST_DELAY: float = 1.0
 
@@ -90,9 +87,11 @@ def parse_args() -> argparse.Namespace:
         description="Export your Chirp audiobook library to a Libib-compatible CSV."
     )
     parser.add_argument(
-        "--first-page-only",
-        action="store_true",
-        help="Stop after scraping the first page of the library.",
+        "--pages",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Stop after scraping the first N pages (omit to scrape all pages).",
     )
     parser.add_argument(
         "--dry-run",
@@ -321,7 +320,6 @@ def _parse_items(items) -> list[tuple[str, str, str]]:
         try:
             title_el = item.find_element(By.CSS_SELECTOR, "a[href^='/audiobooks/']")
             title = title_el.text.strip()
-
             try:
                 byline = item.find_element(By.CSS_SELECTOR, "div[class*='byline']").text.strip()
             except Exception:
@@ -331,9 +329,7 @@ def _parse_items(items) -> list[tuple[str, str, str]]:
                     ).text.strip()
                 except Exception:
                     byline = ""
-
             author = re.sub(r"(?i)^\s*by\s+", "", byline).strip()
-
             try:
                 img_el = item.find_element(
                     By.CSS_SELECTOR,
@@ -342,31 +338,27 @@ def _parse_items(items) -> list[tuple[str, str, str]]:
                 cover = _extract_cover_url(img_el)
             except Exception:
                 cover = ""
-
             books.append((title, author, cover))
-
         except Exception as exc:
             log.debug("Skipping item due to parse error: %s", exc)
-
     return books
 
 
-def scrape_chirp(email: str, password: str, scrape_all: bool) -> list[tuple[str, str, str]]:
-    """Log in to Chirp and scrape the library. Returns [(title, author, cover_url)]."""
+def scrape_chirp(email: str, password: str, max_pages: Optional[int]) -> list[tuple[str, str, str]]:
+    """Log in to Chirp and scrape the library. Returns [(title, author, cover_url)].
+
+    max_pages: stop after this many pages. None means scrape all pages.
+    """
     driver = _build_driver()
     try:
         _login(driver, email, password)
-
-        log.info("Navigating to library…")
+        log.info("Navigating to library\u2026")
         driver.get("https://www.chirpbooks.com/library?sort=recently_added")
         time.sleep(2)
-
         books: list[tuple[str, str, str]] = []
         page_number = 1
-
         while True:
-            log.info("Scraping page %d…", page_number)
-
+            log.info("Scraping page %d\u2026", page_number)
             try:
                 WebDriverWait(driver, PAGE_WAIT_TIMEOUT).until(
                     EC.presence_of_element_located(
@@ -384,37 +376,34 @@ def scrape_chirp(email: str, password: str, scrape_all: bool) -> list[tuple[str,
                     _save_debug_snapshot(driver, f"page_{page_number}_no_items")
                 except Exception:
                     pass
-                log.warning("No library items found on page %d — stopping.", page_number)
+                log.warning("No library items found on page %d \u2014 stopping.", page_number)
                 break
-
             items = driver.find_elements(
                 By.XPATH, "//div[.//a[starts-with(@href,'/audiobooks/')]]"
             )
             page_books = _parse_items(items)
-
             if items and not page_books:
                 try:
                     _save_debug_snapshot(driver, f"page_{page_number}_parse_zero")
                 except Exception:
                     pass
-
             books.extend(page_books)
-            log.info("  → %d book(s) on this page; %d total.", len(page_books), len(books))
+            log.info("  \u2192 %d book(s) on this page; %d total.", len(page_books), len(books))
 
-            if not scrape_all:
-                log.info("--first-page-only set — stopping after page 1.")
+            if max_pages is not None and page_number >= max_pages:
+                log.info("Reached --pages limit (%d) \u2014 stopping.", max_pages)
                 break
 
-            next_buttons = driver.find_elements(By.CSS_SELECTOR, "a[rel='next']")
-            if not next_buttons:
+            # Chirp uses li.rc-pagination-next with aria-disabled="true" on the last page.
+            next_el = driver.find_elements(
+                By.CSS_SELECTOR, "li.rc-pagination-next[aria-disabled='false']"
+            )
+            if not next_el:
                 log.info("No further pages found.")
                 break
-
-            next_buttons[0].click()
+            next_el[0].click()
             page_number += 1
-
         return books
-
     finally:
         driver.quit()
 
@@ -559,12 +548,14 @@ def write_unresolved(
 
 def main() -> None:
     args = parse_args()
-    scrape_all = SCRAPE_ALL_PAGES and not args.first_page_only
+
+    if args.pages is not None and args.pages < 1:
+        raise SystemExit("--pages must be 1 or greater.")
 
     email, password = _prompt_credentials()
 
     log.info("Starting Chirp library scrape…")
-    books = scrape_chirp(email, password, scrape_all=scrape_all)
+    books = scrape_chirp(email, password, max_pages=args.pages)
 
     del email, password  # no longer needed
 
