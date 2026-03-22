@@ -85,7 +85,6 @@ log = logging.getLogger(__name__)
 # ==========================
 # CLI
 # ==========================
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export your Chirp audiobook library to a Libib-compatible CSV."
@@ -112,7 +111,6 @@ def parse_args() -> argparse.Namespace:
 # ==========================
 # CREDENTIALS
 # ==========================
-
 def _prompt_credentials() -> tuple[str, str]:
     """
     Return (email, password) from environment variables or interactive prompts.
@@ -131,7 +129,6 @@ def _prompt_credentials() -> tuple[str, str]:
 # ==========================
 # ISBN LOOKUP
 # ==========================
-
 def get_isbn(title: str, author: str) -> Optional[str]:
     """
     Query Open Library for an ISBN matching title + author.
@@ -181,7 +178,6 @@ def get_isbn(title: str, author: str) -> Optional[str]:
 # ==========================
 # CHIRP SCRAPING
 # ==========================
-
 def _build_driver() -> webdriver.Chrome:
     options = Options()
     # options.add_argument("--headless=new")
@@ -224,23 +220,64 @@ def _extract_cover_url(img_element) -> str:
     return img_element.get_attribute("src") or ""
 
 
-def _parse_items(items) -> list[tuple[str, str, str]]:
-    """
-    Extract (title, author, cover_url) from a list of library item WebElements.
-    Items that cannot be parsed are skipped with a debug log.
-    """    
+def _save_debug_snapshot(driver, tag: str) -> None:
+    """Save page_source and a screenshot for debugging DOM / selector issues."""
+    try:
+        ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        base = f"chirp_debug_{ts}_{tag}"
+        html_path = _output_path(".", base + ".html")
+        img_path = _output_path(".", base + ".png")
+        try:
+            with open(html_path, "w", encoding="utf-8") as f:
+                f.write(driver.page_source)
+        except Exception as exc:
+            log.debug("Failed saving debug HTML: %s", exc)
+        try:
+            driver.save_screenshot(img_path)
+        except Exception as exc:
+            log.debug("Failed saving debug PNG: %s", exc)
+        log.info("Saved debug snapshot: %s and %s", html_path, img_path)
+    except Exception:
+        # Never let debug snapshot break scraping
+        log.debug("Debug snapshot failed (ignored).")
+
+
+def _parse_items(items):
+    import re
+
     books = []
     for item in items:
         try:
-            title = item.find_element(By.CSS_SELECTOR, "user_audiobook_card-module__title___Lsxec").text.strip()
-            author = item.find_element(By.CSS_SELECTOR, "user_audiobook_card-module__byline___xNliO").text.strip()
-            cover = item.find_element(By.CSS_SELECTOR, "img").get_attribute("src")
+            # Title: the audiobook link anchor (href starts with /audiobooks/)
+            title_el = item.find_element(By.CSS_SELECTOR, "a[href^='/audiobooks/']")
+            title = title_el.text.strip()
+
+            # Author: prefer a class-containing 'byline', strip a leading "by "
+            try:
+                byline = item.find_element(By.CSS_SELECTOR, "div[class*='byline']").text.strip()
+            except Exception:
+                # Fallback: any div whose text starts with 'by '
+                try:
+                    byline = item.find_element(By.XPATH, ".//div[starts-with(normalize-space(.),'by ')]").text.strip()
+                except Exception:
+                    byline = ""
+
+            author = re.sub(r'(?i)^\s*by\s+', '', byline).strip()
+
+            # Cover: prefer data-testid image or any cover-image-like img; use _extract_cover_url
+            try:
+                img_el = item.find_element(By.CSS_SELECTOR, "img[data-testid='cover-image-image'], img[class*='cover-image-image']")
+                cover = _extract_cover_url(img_el)
+            except Exception:
+                cover = ""
 
             books.append((title, author, cover))
+
         except Exception as exc:
-            log.debug(f"Skipping item due to parse error: {exc}")
+            log.debug("Skipping item due to parse error: %s", exc)
 
     return books
+
 
 
 
@@ -256,7 +293,6 @@ def scrape_chirp(email: str, password: str, scrape_all: bool) -> list[tuple[str,
         _login(driver, email, password)
 
         log.info("Navigating to library…")
-        # driver.get("https://www.chirpbooks.com/library")
         driver.get("https://www.chirpbooks.com/library?sort=recently_added")
 
         # Give React time to reload the list
@@ -269,15 +305,16 @@ def scrape_chirp(email: str, password: str, scrape_all: bool) -> list[tuple[str,
             log.info("Scraping page %d…", page_number)
 
             try:
+                # Wait for at least one audiobook card (container that contains an /audiobooks/ link)
                 WebDriverWait(driver, PAGE_WAIT_TIMEOUT).until(
-                   EC.presence_of_element_located(
-                       (By.CSS_SELECTOR, "div[role='list']")
-                   )
+                    EC.presence_of_element_located(
+                        (By.XPATH, "//div[.//a[starts-with(@href,'/audiobooks/')]]")
+                    )
                 )
-                
+
                 WebDriverWait(driver, PAGE_WAIT_TIMEOUT).until(
                     EC.presence_of_all_elements_located(
-                        (By.CSS_SELECTOR, "div[role='listitem']")
+                        (By.XPATH, "//div[.//a[starts-with(@href,'/audiobooks/')]]")
                     )
                 )
 
@@ -285,13 +322,25 @@ def scrape_chirp(email: str, password: str, scrape_all: bool) -> list[tuple[str,
                 time.sleep(1)
 
             except Exception:
+                # Save debug snapshot to inspect the page DOM that caused the failure
+                try:
+                    _save_debug_snapshot(driver, f"page_{page_number}_no_items")
+                except Exception:
+                    pass
                 log.warning(
                     "No library items found on page %d — stopping.", page_number
                 )
                 break
 
-            items = driver.find_elements(By.CSS_SELECTOR, "div[role='listitem']")
+            # Find all card containers that include an audiobook link
+            items = driver.find_elements(By.XPATH, "//div[.//a[starts-with(@href,'/audiobooks/')]]")
             page_books = _parse_items(items)
+            if items and not page_books:
+                try:
+                    _save_debug_snapshot(driver, f"page_{page_number}_parse_zero")
+                except Exception:
+                    pass
+
             books.extend(page_books)
             log.info("  → %d book(s) on this page; %d total.", len(page_books), len(books))
 
@@ -316,7 +365,6 @@ def scrape_chirp(email: str, password: str, scrape_all: bool) -> list[tuple[str,
 # ==========================
 # ISBN RESOLUTION
 # ==========================
-
 def resolve_isbns(
     books: list[tuple[str, str, str]],
 ) -> list[tuple[str, str, Optional[str], str]]:
@@ -349,7 +397,6 @@ def resolve_isbns(
 # ==========================
 # OUTPUT
 # ==========================
-
 def _output_path(directory: str, filename: str) -> str:
     os.makedirs(directory, exist_ok=True)
     return os.path.join(directory, filename)
@@ -407,7 +454,6 @@ def write_unresolved(
 # ==========================
 # MAIN PIPELINE
 # ==========================
-
 def main() -> None:
     args = parse_args()
     scrape_all = SCRAPE_ALL_PAGES and not args.first_page_only
