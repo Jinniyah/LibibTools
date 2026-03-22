@@ -1,5 +1,5 @@
 ﻿# LibibTools
-Web-scrapping tool to get ebooks and audiobooks into Libib.
+Web-scraping tool to get ebooks and audiobooks into Libib.
 
 # chirp-to-libib
 
@@ -9,8 +9,8 @@ A Python script that scrapes your [Chirp](https://www.chirpbooks.com) audiobook 
 
 ## What it does
 
-1. Logs in to your Chirp account using a headless Chrome browser
-2. Scrapes your library for title, author, and cover image URL
+1. Logs in to your Chirp account using a Chrome browser (automated via Selenium)
+2. Scrapes your library for title, author, and cover image URL across one or more pages
 3. Looks up each book's ISBN via the [Open Library API](https://openlibrary.org/developers/api)
 4. Writes a Libib-compatible CSV ready for import
 5. Writes a separate report of any titles whose ISBNs could not be found
@@ -21,11 +21,7 @@ A Python script that scrapes your [Chirp](https://www.chirpbooks.com) audiobook 
 
 - Python 3.8 or higher
 - Google Chrome installed
-- ChromeDriver matching your Chrome version — download from:
-  https://googlechromelabs.github.io/chrome-for-testing/
-
-> **Note:** ChromeDriver must be on your system PATH. If you're unsure how to do
-> this, see the [ChromeDriver getting started guide](https://chromedriver.chromium.org/getting-started).
+- `webdriver-manager` (installed automatically via `requirements.txt`) — handles ChromeDriver installation for you, no manual setup needed
 
 ---
 
@@ -103,10 +99,10 @@ then add `CHIRP_EMAIL` and `CHIRP_PASSWORD` under User Variables.
 python chirp_to_libib.py
 ```
 
-**First page only (useful for testing):**
+**Scrape only the first N pages (useful for testing or incremental imports):**
 
 ```bash
-python chirp_to_libib.py --first-page-only
+python chirp_to_libib.py --pages 3
 ```
 
 **Dry run — scrape and resolve ISBNs without writing any files:**
@@ -124,8 +120,18 @@ python chirp_to_libib.py --output-dir ~/Documents/Libib
 **Combine options:**
 
 ```bash
-python chirp_to_libib.py --first-page-only --output-dir ~/Documents/Libib
+python chirp_to_libib.py --pages 3 --dry-run --output-dir ~/Documents/Libib
 ```
+
+---
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `--pages N` | Stop after scraping the first N pages. Omit to scrape all pages. |
+| `--dry-run` | Scrape and resolve ISBNs, but do not write any output files. |
+| `--output-dir PATH` | Directory to write output files to (default: current directory). |
 
 ---
 
@@ -170,8 +176,7 @@ A few options can be changed directly in the script under the `CONFIGURATION` se
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `SCRAPE_ALL_PAGES` | `True` | Set to `False` to default to first-page-only without using the CLI flag |
-| `ISBN_REQUEST_DELAY` | `0.5` | Seconds to wait between Open Library requests |
+| `ISBN_REQUEST_DELAY` | `1.0` | Seconds to wait between Open Library requests |
 | `ISBN_LOG_INTERVAL` | `25` | How often to log ISBN progress (every N books) |
 | `PAGE_WAIT_TIMEOUT` | `20` | Selenium timeout in seconds for page elements |
 
@@ -184,17 +189,22 @@ Chirp may have updated their page structure. Check that the `email` and `passwor
 field IDs and the submit button selector still match the current login page.
 
 **No books are scraped from the library**
-Chirp may have updated their library page HTML. The `.library-item`, `.title`,
-and `.author` CSS selectors in `_parse_items()` may need updating.
+Chirp may have updated their library page HTML. The selectors in `_parse_items()`
+may need updating to match the current DOM structure.
 
 **ChromeDriver version mismatch error**
-Download the ChromeDriver version that matches your installed Chrome from:
-https://googlechromelabs.github.io/chrome-for-testing/
+The script uses `webdriver-manager` to handle ChromeDriver automatically. If you
+see a version mismatch, try upgrading it:
+```bash
+pip install --upgrade webdriver-manager
+```
 
 **ISBNs are frequently wrong or missing**
 Open Library's coverage of audiobooks is incomplete. ISBNs for audiobook editions
 in particular are often absent. The unresolved report will list all affected titles
-for manual follow-up.
+for manual follow-up. The script searches using separate `title` and `author`
+fields for best accuracy, with a title-only fallback pass if the first search
+returns nothing.
 
 ---
 
