@@ -5,3 +5,5 @@
 /.vs/LibibTools/copilot-chat/8af57886/sessions
 /.vs/LibibTools/CopilotIndices/17.14.1641.39856
 *.vsidx
+*.csv
+/chirp_to_libib_unresolved_2026-03-22_17-04.txt
