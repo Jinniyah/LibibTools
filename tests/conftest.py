@@ -16,17 +16,20 @@ def mock_driver():
     driver.find_elements.return_value = []
     return driver
 
+
 @pytest.fixture
 def mock_build_driver(mock_driver):
     """Patch _build_driver to return our mock driver."""
     with patch("chirp_to_libib.core._build_driver", return_value=mock_driver):
         yield mock_driver
 
+
 @pytest.fixture
 def mock_requests_get():
     """Patch requests.get for Open Library."""
     with patch("chirp_to_libib.core.requests.get") as mock:
         yield mock
+
 
 @pytest.fixture
 def no_sleep():

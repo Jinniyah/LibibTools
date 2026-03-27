@@ -1,6 +1,7 @@
 import chirp_to_libib.core as c
 from unittest.mock import MagicMock
 
+
 def test_get_isbn_pass1_hit(mock_requests_get):
     mock_resp = MagicMock()
     mock_resp.json.return_value = {
@@ -11,6 +12,7 @@ def test_get_isbn_pass1_hit(mock_requests_get):
 
     isbn = c.get_isbn("Test Book", "Author")
     assert isbn == "9781234567897"
+
 
 def test_get_isbn_pass2_hit(mock_requests_get):
     # Pass 1 returns empty
@@ -29,6 +31,7 @@ def test_get_isbn_pass2_hit(mock_requests_get):
 
     isbn = c.get_isbn("Test Book", "Author")
     assert isbn == "123456789X"
+
 
 def test_get_isbn_network_error(mock_requests_get):
     mock_requests_get.side_effect = Exception("Network down")

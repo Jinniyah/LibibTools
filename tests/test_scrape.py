@@ -2,6 +2,7 @@ import chirp_to_libib.core as c
 from unittest.mock import MagicMock
 from selenium.webdriver.common.by import By
 
+
 def test_login_success(mock_build_driver):
     driver = mock_build_driver
 
