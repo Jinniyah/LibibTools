@@ -43,12 +43,15 @@ from difflib import SequenceMatcher
 from typing import Optional
 
 import requests
+from collections.abc import Iterable
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.remote.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
 
 # ==========================
@@ -282,7 +285,7 @@ def _login(driver: webdriver.Chrome, email: str, password: str) -> None:
     log.info("Login successful.")
 
 
-def _extract_cover_url(img_element) -> str:
+def _extract_cover_url(img_element: WebElement) -> str:
     """Return the highest-resolution URL from srcset, or fall back to src."""
     srcset = img_element.get_attribute("srcset")
     if srcset:
@@ -296,7 +299,7 @@ def _output_path(directory: str, filename: str) -> str:
     return os.path.join(directory, filename)
 
 
-def _save_debug_snapshot(driver, tag: str) -> None:
+def _save_debug_snapshot(driver: WebDriver, tag: str) -> None:
     """Save page_source and a screenshot for debugging DOM / selector issues."""
     try:
         ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -317,7 +320,7 @@ def _save_debug_snapshot(driver, tag: str) -> None:
         log.debug("Debug snapshot failed (ignored).")
 
 
-def _parse_items(items) -> list[tuple[str, str, str]]:
+def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
     books = []
     for item in items:
         try:
