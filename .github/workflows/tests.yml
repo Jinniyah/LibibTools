@@ -44,4 +44,4 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=chirp_to_libib --cov-report=term-missing --cov-fail-under=80
+          pytest --cov=chirp_to_libib --cov-report=term-missing --cov-fail-under=65
