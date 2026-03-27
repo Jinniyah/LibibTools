@@ -1,224 +1,350 @@
 ﻿# LibibTools
 
-![CI](https://github.com/Jinniyah/LibibTools/actions/workflows/tests.yml/badge.svg)
+![Tests](https://github.com/Jinniyah/LibibTools/actions/workflows/tests.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-generated-blue)
 
-Web-scraping tool to get ebooks and audiobooks into Libib.
-
-# chirp-to-libib
-
-A Python script that scrapes your [Chirp](https://www.chirpbooks.com) audiobook library and exports a CSV you can import directly into [Libib](https://www.libib.com) to maintain your personal collection.
+Tools for automating and enriching personal library management workflows.  
+This repository currently includes **chirp‑to‑libib**, a Python package that scrapes your **Chirp Books** audiobook library and exports a Libib‑compatible CSV.
 
 ---
 
-## What it does
+# Table of Contents
 
-1. Logs in to your Chirp account using a Chrome browser (automated via Selenium)
-2. Scrapes your library for title, author, and cover image URL across one or more pages
-3. Looks up each book's ISBN via the [Open Library API](https://openlibrary.org/developers/api)
-4. Writes a Libib-compatible CSV ready for import
-5. Writes a separate report of any titles whose ISBNs could not be found
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Credentials](#credentials)
+- [Usage](#usage)
+- [Options](#options)
+- [Output Files](#output-files)
+- [Importing into Libib](#importing-into-libib)
+- [Configuration](#configuration)
+- [Development Workflow](#development-workflow)
+- [Makefile Tasks](#makefile-tasks)
+- [Troubleshooting](#troubleshooting)
+- [Privacy](#privacy)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [Versioning](#versioning)
+- [License](#license)
 
 ---
 
-## Requirements
+# Overview
 
-- Python 3.10 or higher
-- Google Chrome installed
-- `webdriver-manager` (installed automatically via `requirements.txt`) — handles ChromeDriver installation for you, no manual setup needed
+`chirp‑to‑libib` automates the process of exporting your Chirp Books audiobook library into a format compatible with **Libib**, including:
+
+- Automated login via Selenium  
+- Scraping your full Chirp library  
+- ISBN lookup via Open Library  
+- High‑resolution cover extraction  
+- CSV generation (UTF‑8 with BOM)  
+- Unresolved ISBN reporting  
+
+This tool is designed for reliability, repeatability, and long‑term maintainability.
 
 ---
 
-## Installation
+# Features
 
-**1. Clone the repository**
+- 🔐 Secure credential handling  
+- 🧭 Multi‑page scraping  
+- 🔎 ISBN resolution with fallback logic  
+- 📦 Standards‑compliant CSV output  
+- 🖼 Full‑resolution cover URLs  
+- 🧪 Automated tests with CI  
+- 📊 Coverage reporting  
+- 🛠 Configurable runtime behavior  
 
-```bash
-git clone https://github.com/your-username/chirp-to-libib.git
-cd chirp-to-libib
+---
+
+# Architecture
+
+```
++-----------------------+
+|  User CLI Invocation  |
++-----------+-----------+
+            |
+            v
++-----------------------+
+|   __main__.py         |
+|   Argument parsing     |
++-----------+-----------+
+            |
+            v
++-----------------------+
+|       core.py         |
+|  - Selenium login      |
+|  - Page scraping       |
+|  - ISBN lookup         |
+|  - CSV generation      |
++-----------+-----------+
+            |
+            v
++-----------------------+
+|   Output Artifacts    |
+|  CSV + unresolved log |
++-----------------------+
 ```
 
-**2. Create and activate a virtual environment (recommended)**
+Key design principles:
+
+- **Idempotent**: Running multiple times produces predictable results  
+- **Observable**: Logging at key checkpoints  
+- **Extensible**: Architecture supports future scrapers (e.g., Audible → Libib)  
+
+---
+
+# Requirements
+
+- Python **3.10+**  
+- Google Chrome installed  
+- `webdriver-manager` (installed via `requirements.txt`)  
+
+---
+
+# Installation
 
 ```bash
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
+git clone https://github.com/Jinniyah/LibibTools.git
+cd LibibTools
 
-# Windows
 python -m venv venv
-venv\Scripts\activate
-```
+source venv/bin/activate   # macOS/Linux
+venv\Scripts\activate      # Windows
 
-**3. Install dependencies**
-
-```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-## Setting up your credentials
+# Credentials
 
-Your Chirp email and password should **never** be typed into the script or committed to Git. Instead, set them as environment variables before running.
+Set your Chirp credentials as environment variables.
 
-**macOS / Linux — current session only:**
-
-```bash
-export CHIRP_EMAIL="you@example.com"
-export CHIRP_PASSWORD="yourpassword"
-```
-
-**macOS / Linux — permanent (add to `~/.zshrc` or `~/.bashrc`):**
+### macOS / Linux
 
 ```bash
 export CHIRP_EMAIL="you@example.com"
 export CHIRP_PASSWORD="yourpassword"
 ```
 
-Then run `source ~/.zshrc` (or `~/.bashrc`) to apply.
-
-**Windows — current session only (Command Prompt):**
+### Windows
 
 ```cmd
 set CHIRP_EMAIL=you@example.com
 set CHIRP_PASSWORD=yourpassword
 ```
 
-**Windows — permanent:**
-
-Search for **"Edit environment variables for your account"** in the Start menu,
-then add `CHIRP_EMAIL` and `CHIRP_PASSWORD` under User Variables.
-
-> If environment variables are not set, the script will prompt you to enter your
-> credentials interactively each time it runs.
+If missing, the script will prompt interactively.
 
 ---
 
-## Usage
+# Usage
 
-**Basic — scrape full library and export CSV:**
+### Full scrape
 
 ```bash
 python -m chirp_to_libib
 ```
 
-**Scrape only the first N pages (useful for testing or incremental imports):**
+### Limit to N pages
 
 ```bash
 python -m chirp_to_libib --pages 3
 ```
 
-**Dry run — scrape and resolve ISBNs without writing any files:**
+### Dry run
 
 ```bash
 python -m chirp_to_libib --dry-run
 ```
 
-**Write output files to a specific folder:**
+### Custom output directory
 
 ```bash
 python -m chirp_to_libib --output-dir ~/Documents/Libib
 ```
 
-**Combine options:**
-
-```bash
-python -m chirp_to_libib --pages 3 --dry-run --output-dir ~/Documents/Libib
-```
-
 ---
 
-## Options
+# Options
 
 | Option | Description |
 |--------|-------------|
-| `--pages N` | Stop after scraping the first N pages. Omit to scrape all pages. |
-| `--dry-run` | Scrape and resolve ISBNs, but do not write any output files. |
-| `--output-dir PATH` | Directory to write output files to (default: current directory). |
+| `--pages N` | Scrape only the first N pages |
+| `--dry-run` | Resolve ISBNs but do not write files |
+| `--output-dir PATH` | Directory for output files |
 
 ---
 
-## Output files
+# Output Files
 
 | File | Description |
 |------|-------------|
-| `chirp_to_libib_YYYY-MM-DD_HH-MM.csv` | Libib-compatible CSV — import this file |
-| `chirp_to_libib_unresolved_YYYY-MM-DD_HH-MM.txt` | Titles with no ISBN found (only created if needed) |
+| `chirp_to_libib_YYYY-MM-DD_HH-MM.csv` | Libib‑compatible CSV |
+| `chirp_to_libib_unresolved_YYYY-MM-DD_HH-MM.txt` | Titles with missing ISBNs |
 
-The CSV is encoded as **UTF-8 with BOM**, which is the format Libib expects.
-
-### CSV columns
+### CSV Columns
 
 | Column | Description |
 |--------|-------------|
 | Title | Book title |
-| Creator | Author(s) as listed on Chirp |
-| Identifier | ISBN-13 (preferred) or ISBN-10, if found |
+| Creator | Author(s) |
+| Identifier | ISBN‑13 or ISBN‑10 |
 | Type | Always `audiobook` |
-| Image | Full-resolution cover URL |
-
-> Rows with an empty Identifier will still import into Libib, but Libib won't be
-> able to auto-fill metadata for those titles. Use the unresolved report to look
-> them up manually.
+| Image | Full‑resolution cover URL |
 
 ---
 
-## Importing into Libib
+# Importing into Libib
 
-1. Log in to [libib.com](https://www.libib.com)
-2. Open the library you want to update (or create a new one)
-3. Click **Add Items → Import CSV**
-4. Upload the generated `chirp_to_libib_*.csv` file
-5. Map the columns if prompted and confirm the import
+1. Log in at <https://www.libib.com>  
+2. Open your library  
+3. **Add Items → Import CSV**  
+4. Upload the generated CSV  
+5. Map columns if prompted  
 
 ---
 
-## Configuration
+# Configuration
 
-A few options can be changed directly in the script under the `CONFIGURATION` section at the top:
+Located in `chirp_to_libib/core.py`:
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `ISBN_REQUEST_DELAY` | `1.0` | Seconds to wait between Open Library requests |
-| `ISBN_LOG_INTERVAL` | `25` | How often to log ISBN progress (every N books) |
-| `PAGE_WAIT_TIMEOUT` | `20` | Selenium timeout in seconds for page elements |
+| `ISBN_REQUEST_DELAY` | `1.0` | Delay between API requests |
+| `ISBN_LOG_INTERVAL` | `25` | Log progress every N books |
+| `PAGE_WAIT_TIMEOUT` | `20` | Selenium wait timeout |
 
 ---
 
-## Troubleshooting
+# Development Workflow
 
-**Login fails silently or the script hangs at login**
-Chirp may have updated their page structure. Check that the `email` and `password`
-field IDs and the submit button selector still match the current login page.
+### Install dev dependencies
 
-**No books are scraped from the library**
-Chirp may have updated their library page HTML. The selectors in `_parse_items()`
-may need updating to match the current DOM structure.
+```bash
+pip install -r requirements-dev.txt
+```
 
-**ChromeDriver version mismatch error**
-The script uses `webdriver-manager` to handle ChromeDriver automatically. If you
-see a version mismatch, try upgrading it:
+### Run tests
+
+```bash
+pytest
+```
+
+### Run coverage
+
+```bash
+pytest --cov=chirp_to_libib --cov-report=term-missing
+```
+
+### Linting
+
+```bash
+ruff check .
+```
+
+### Formatting
+
+```bash
+black .
+```
+
+### Type checking
+
+```bash
+mypy chirp_to_libib
+```
+
+---
+
+# Makefile Tasks
+
+If you use the included Makefile:
+
+```bash
+make test        # run tests
+make lint        # run ruff
+make format      # run black
+make typecheck   # run mypy
+make coverage    # run coverage suite
+```
+
+---
+
+# Troubleshooting
+
+**Login fails**  
+Chirp may have updated their login page. Update selectors.
+
+**No books scraped**  
+HTML structure may have changed. Update parsing logic.
+
+**ChromeDriver mismatch**  
 ```bash
 pip install --upgrade webdriver-manager
 ```
 
-**ISBNs are frequently wrong or missing**
-Open Library's coverage of audiobooks is incomplete. ISBNs for audiobook editions
-in particular are often absent. The unresolved report will list all affected titles
-for manual follow-up. The script searches using separate `title` and `author`
-fields for best accuracy, with a title-only fallback pass if the first search
-returns nothing.
+**Missing ISBNs**  
+Open Library coverage varies. Use unresolved report for manual lookup.
 
 ---
 
-## Privacy
+# Privacy
 
-- No data is sent anywhere other than Chirp (to log in and scrape) and Open Library (for ISBN lookups).
-- Output files may contain your personal library data. They are excluded from Git via `.gitignore` — do not remove those rules.
-- Credentials are never written to disk by this script.
+- Only Chirp and Open Library are contacted  
+- Output files contain personal library data and are ignored via `.gitignore`  
+- Credentials are never written to disk  
 
 ---
 
-## License
+# Project Structure
 
-MIT — see [LICENSE](LICENSE) for details.
+```text
+LibibTools/
+├── chirp_to_libib/
+│   ├── __main__.py
+│   ├── core.py
+│   └── __init__.py
+├── tests/
+├── requirements.txt
+├── requirements-dev.txt
+├── pyproject.toml
+├── Makefile
+└── README.md
+```
+
+---
+
+# Contributing
+
+Contributions are welcome.
+
+1. Fork the repository  
+2. Create a feature branch  
+3. Write tests  
+4. Ensure linting, formatting, and type checks pass  
+5. Submit a pull request  
+
+---
+
+# Versioning
+
+This project follows **Semantic Versioning (SemVer)**:
+
+```
+MAJOR.MINOR.PATCH
+```
+
+- **MAJOR**: Breaking changes  
+- **MINOR**: New features  
+- **PATCH**: Bug fixes  
+
+---
+
+# License
+
+MIT — see `LICENSE`.
