@@ -10,6 +10,13 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 source = ["chirp_to_libib"]
+omit = [
+    "chirp_to_libib/__main__.py",
+    "chirp_to_libib/core.py:_build_driver",
+    "chirp_to_libib/core.py:_login",
+    "chirp_to_libib/core.py:scrape_chirp",
+    "chirp_to_libib/core.py:main",
+]
 
 [tool.ruff.lint]
 line-length = 100
