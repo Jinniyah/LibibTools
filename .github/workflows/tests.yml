@@ -32,10 +32,11 @@ jobs:
         run: |
           pip install -r requirements-dev.txt
 
-      - name: Run ruff (lint + format check)
-        run: |
-          ruff check . --fix
-          ruff format --check .
+      - name: Run ruff (lint)
+        run: ruff check .
+
+      - name: Run ruff (format check)
+        run: ruff format --check .
 
       - name: Run mypy (static type checking)
         run: |
