@@ -1,4 +1,4 @@
-import chirp_to_libib as c
+import chirp_to_libib.core as c
 from unittest.mock import MagicMock
 from selenium.webdriver.common.by import By
 

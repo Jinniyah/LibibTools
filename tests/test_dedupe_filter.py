@@ -1,4 +1,4 @@
-import chirp_to_libib as c
+import chirp_to_libib.core as c
 
 def test_dedupe_replaces_missing_author():
     books = [

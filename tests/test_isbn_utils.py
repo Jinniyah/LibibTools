@@ -1,4 +1,4 @@
-import chirp_to_libib as c
+import chirp_to_libib.core as c
 
 def test_normalize_isbn():
     assert c._normalize_isbn("978-1-2345-6789-7") == "9781234567897"

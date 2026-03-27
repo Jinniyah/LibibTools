@@ -1,7 +1,6 @@
 ﻿# LibibTools
 
 ![CI](https://github.com/Jinniyah/LibibTools/actions/workflows/tests.yml/badge.svg)
-![Tests](https://github.com/Jinniyah/LibibTools/actions/workflows/tests.yml/badge.svg)
 
 Web-scraping tool to get ebooks and audiobooks into Libib.
 
@@ -23,7 +22,7 @@ A Python script that scrapes your [Chirp](https://www.chirpbooks.com) audiobook 
 
 ## Requirements
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - Google Chrome installed
 - `webdriver-manager` (installed automatically via `requirements.txt`) — handles ChromeDriver installation for you, no manual setup needed
 
@@ -100,31 +99,31 @@ then add `CHIRP_EMAIL` and `CHIRP_PASSWORD` under User Variables.
 **Basic — scrape full library and export CSV:**
 
 ```bash
-python chirp_to_libib.py
+python -m chirp_to_libib
 ```
 
 **Scrape only the first N pages (useful for testing or incremental imports):**
 
 ```bash
-python chirp_to_libib.py --pages 3
+python -m chirp_to_libib --pages 3
 ```
 
 **Dry run — scrape and resolve ISBNs without writing any files:**
 
 ```bash
-python chirp_to_libib.py --dry-run
+python -m chirp_to_libib --dry-run
 ```
 
 **Write output files to a specific folder:**
 
 ```bash
-python chirp_to_libib.py --output-dir ~/Documents/Libib
+python -m chirp_to_libib --output-dir ~/Documents/Libib
 ```
 
 **Combine options:**
 
 ```bash
-python chirp_to_libib.py --pages 3 --dry-run --output-dir ~/Documents/Libib
+python -m chirp_to_libib --pages 3 --dry-run --output-dir ~/Documents/Libib
 ```
 
 ---

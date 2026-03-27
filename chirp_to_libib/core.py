@@ -8,7 +8,7 @@ Dependencies:
     Chrome must be installed on your system.
 
 Usage:
-    python chirp_to_libib.py [options]
+    python3 -m chirp_to_libib [options]
 
     Options:
         --pages N             Only scrape the first N pages (omit to scrape all pages).
@@ -252,7 +252,7 @@ def get_isbn(title: str, author: str) -> Optional[str]:
 
 def _build_driver() -> webdriver.Chrome:
     options = Options()
-    # options.add_argument("--headless=new")
+    # options.add_argument("--headless=new") # adding this in causes the script to fail, due to Chirp policy.
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")

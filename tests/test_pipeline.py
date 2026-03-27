@@ -1,4 +1,4 @@
-import chirp_to_libib as c
+import chirp_to_libib.core as c
 from unittest.mock import patch
 
 def test_pipeline_dry_run(tmp_path, mock_build_driver, no_sleep):
