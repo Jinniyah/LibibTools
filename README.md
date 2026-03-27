@@ -1,4 +1,8 @@
 ﻿# LibibTools
+
+![CI](https://github.com/Jinniyah/LibibTools/actions/workflows/tests.yml/badge.svg)
+![Tests](https://github.com/Jinniyah/LibibTools/actions/workflows/tests.yml/badge.svg)
+
 Web-scraping tool to get ebooks and audiobooks into Libib.
 
 # chirp-to-libib

@@ -602,7 +602,3 @@ def main() -> None:
         log.info("All ISBNs resolved — no unresolved file written.")
 
     print(f"\nUpload '{csv_path}' to Libib to update your collection.")
-
-
-if __name__ == "__main__":
-    main()

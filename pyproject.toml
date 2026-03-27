@@ -1,0 +1,26 @@
+[project]
+name = "chirp_to_libib"
+version = "0.1.0"
+description = "Scrape Chirp audiobook library and export Libib-compatible CSV"
+authors = [{ name = "Jennifer" }]
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["chirp_to_libib"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
