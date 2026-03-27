@@ -7,8 +7,6 @@ import os
 # Add project root to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import chirp_to_libib as c
-
 
 @pytest.fixture
 def mock_driver():

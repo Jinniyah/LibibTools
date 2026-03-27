@@ -34,7 +34,7 @@ jobs:
 
       - name: Run ruff (lint + format check)
         run: |
-          ruff check .
+          ruff check . --fix
           ruff format --check .
 
       - name: Run mypy (static type checking)
