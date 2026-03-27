@@ -51,7 +51,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-
 # ==========================
 # CONFIGURATION
 # ==========================
@@ -82,6 +81,7 @@ log = logging.getLogger(__name__)
 # CLI
 # ==========================
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export your Chirp audiobook library to a Libib-compatible CSV."
@@ -111,12 +111,12 @@ def parse_args() -> argparse.Namespace:
 # CREDENTIALS
 # ==========================
 
+
 def _prompt_credentials() -> tuple[str, str]:
     """Return (email, password) from environment variables or interactive prompts."""
     email = os.environ.get("CHIRP_EMAIL") or input("Enter your Chirp email: ").strip()
-    password = (
-        os.environ.get("CHIRP_PASSWORD")
-        or getpass.getpass("Enter your Chirp password: ")
+    password = os.environ.get("CHIRP_PASSWORD") or getpass.getpass(
+        "Enter your Chirp password: "
     )
     if not email or not password:
         raise ValueError("Both email and password are required.")
@@ -159,7 +159,9 @@ def _best_isbn(isbns: list[str]) -> Optional[str]:
     return None
 
 
-def _title_is_plausible(query_title: str, returned_title: str, threshold: float = 0.55) -> bool:
+def _title_is_plausible(
+    query_title: str, returned_title: str, threshold: float = 0.55
+) -> bool:
     """
     Return True if the returned title is plausibly the same book.
 
@@ -250,6 +252,7 @@ def get_isbn(title: str, author: str) -> Optional[str]:
 # CHIRP SCRAPING
 # ==========================
 
+
 def _build_driver() -> webdriver.Chrome:
     options = Options()
     # options.add_argument("--headless=new") # adding this in causes the script to fail, due to Chirp policy.
@@ -321,7 +324,9 @@ def _parse_items(items) -> list[tuple[str, str, str]]:
             title_el = item.find_element(By.CSS_SELECTOR, "a[href^='/audiobooks/']")
             title = title_el.text.strip()
             try:
-                byline = item.find_element(By.CSS_SELECTOR, "div[class*='byline']").text.strip()
+                byline = item.find_element(
+                    By.CSS_SELECTOR, "div[class*='byline']"
+                ).text.strip()
             except Exception:
                 try:
                     byline = item.find_element(
@@ -344,7 +349,9 @@ def _parse_items(items) -> list[tuple[str, str, str]]:
     return books
 
 
-def scrape_chirp(email: str, password: str, max_pages: Optional[int]) -> list[tuple[str, str, str]]:
+def scrape_chirp(
+    email: str, password: str, max_pages: Optional[int]
+) -> list[tuple[str, str, str]]:
     """Log in to Chirp and scrape the library. Returns [(title, author, cover_url)].
 
     max_pages: stop after this many pages. None means scrape all pages.
@@ -376,7 +383,9 @@ def scrape_chirp(email: str, password: str, max_pages: Optional[int]) -> list[tu
                     _save_debug_snapshot(driver, f"page_{page_number}_no_items")
                 except Exception:
                     pass
-                log.warning("No library items found on page %d \u2014 stopping.", page_number)
+                log.warning(
+                    "No library items found on page %d \u2014 stopping.", page_number
+                )
                 break
             items = driver.find_elements(
                 By.XPATH, "//div[.//a[starts-with(@href,'/audiobooks/')]]"
@@ -388,7 +397,11 @@ def scrape_chirp(email: str, password: str, max_pages: Optional[int]) -> list[tu
                 except Exception:
                     pass
             books.extend(page_books)
-            log.info("  \u2192 %d book(s) on this page; %d total.", len(page_books), len(books))
+            log.info(
+                "  \u2192 %d book(s) on this page; %d total.",
+                len(page_books),
+                len(books),
+            )
 
             if max_pages is not None and page_number >= max_pages:
                 log.info("Reached --pages limit (%d) \u2014 stopping.", max_pages)
@@ -412,7 +425,10 @@ def scrape_chirp(email: str, password: str, max_pages: Optional[int]) -> list[tu
 # DEDUPLICATION & FILTERING
 # ==========================
 
-def dedupe_books_by_title(books: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+
+def dedupe_books_by_title(
+    books: list[tuple[str, str, str]],
+) -> list[tuple[str, str, str]]:
     """
     Remove duplicates by title (case-insensitive), preserving order.
     If a duplicate is found and the existing record lacks an author but the new
@@ -446,7 +462,9 @@ def dedupe_books_by_title(books: list[tuple[str, str, str]]) -> list[tuple[str, 
     return unique
 
 
-def filter_invalid_books(books: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+def filter_invalid_books(
+    books: list[tuple[str, str, str]],
+) -> list[tuple[str, str, str]]:
     """Remove rows with empty, too-short, or placeholder titles."""
     valid: list[tuple[str, str, str]] = []
     removed = 0
@@ -475,6 +493,7 @@ def filter_invalid_books(books: list[tuple[str, str, str]]) -> list[tuple[str, s
 # ISBN RESOLUTION
 # ==========================
 
+
 def resolve_isbns(
     books: list[tuple[str, str, str]],
 ) -> list[tuple[str, str, Optional[str], str]]:
@@ -488,7 +507,9 @@ def resolve_isbns(
 
         if idx % ISBN_LOG_INTERVAL == 0 or idx == total:
             resolved = sum(1 for _, _, i, _ in records if i)
-            log.info("ISBN progress: %d/%d looked up, %d resolved.", idx, total, resolved)
+            log.info(
+                "ISBN progress: %d/%d looked up, %d resolved.", idx, total, resolved
+            )
 
         time.sleep(ISBN_REQUEST_DELAY)
 
@@ -498,6 +519,7 @@ def resolve_isbns(
 # ==========================
 # OUTPUT
 # ==========================
+
 
 def write_csv(
     records: list[tuple[str, str, Optional[str], str]],
@@ -545,6 +567,7 @@ def write_unresolved(
 # ==========================
 # MAIN PIPELINE
 # ==========================
+
 
 def main() -> None:
     args = parse_args()
