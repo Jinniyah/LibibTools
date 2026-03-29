@@ -1,6 +1,10 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\.github",
+    "\\.github\\workflows",
+    "\\.pytest_cache"
   ],
+  "SelectedNode": "\\README.md",
   "PreviewInSolutionExplorer": false
 }
