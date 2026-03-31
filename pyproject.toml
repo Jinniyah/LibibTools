@@ -2,8 +2,11 @@
 name = "chirp_to_libib"
 version = "0.1.0"
 description = "Scrape Chirp audiobook library and export Libib-compatible CSV"
-authors = [{ name = "Jennifer" }]
+authors = [{ name = "Jennifer M" }]
 requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["chirp_to_libib", "kindle_to_libib"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
