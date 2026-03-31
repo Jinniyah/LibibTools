@@ -16,9 +16,6 @@ def test_dedupe_books_by_title():
     assert len(result) == 1
 
 
-# test_kindle.py and test_dedupe_filter.py
-from lib import filter_invalid_books
-
 _KINDLE_UI_GARBAGE = frozenset({"content", "devices", "preferences", "privacy settings"})
 
 def test_filter_invalid_books():
