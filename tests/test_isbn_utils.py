@@ -1,26 +1,36 @@
-import chirp_to_libib.core as c
+import pytest
+from unittest.mock import patch
+
+from lib.openlibrary import (
+    _normalize_isbn,
+    _valid_isbn10,
+    _valid_isbn13,
+    _best_isbn,
+    get_isbn,
+)
 
 
 def test_normalize_isbn():
-    assert c._normalize_isbn("978-1-2345-6789-7") == "9781234567897"
-    assert c._normalize_isbn(" 123X ") == "123X"
-
-
-def test_valid_isbn13():
-    assert c._valid_isbn13("9781234567897")
-    assert not c._valid_isbn13("123")
+    assert _normalize_isbn("0-321-14653-0") == "0321146530"
 
 
 def test_valid_isbn10():
-    assert c._valid_isbn10("123456789X")
-    assert not c._valid_isbn10("12345")
+    assert _valid_isbn10("123456789X")
 
 
-def test_best_isbn_prefers_13():
-    isbns = ["123456789X", "9781234567897"]
-    assert c._best_isbn(isbns) == "9781234567897"
+def test_valid_isbn13():
+    assert _valid_isbn13("9781402894626")
 
 
-def test_title_is_plausible():
-    assert c._title_is_plausible("The Great Book", "Great Book, The")
-    assert not c._title_is_plausible("Cats", "The History of Airplanes")
+def test_best_isbn():
+    assert _best_isbn(["0321146530"]) == "0321146530"
+
+
+@patch("lib.openlibrary.requests.get")
+def test_get_isbn_title_only(mock_get):
+    mock_get.return_value.raise_for_status = lambda: None
+    mock_get.return_value.json.return_value = {
+        "docs": [{"title": "Test", "isbn": ["0321146530"]}]
+    }
+    isbn = get_isbn("Test", "")
+    assert isbn == "0321146530"

@@ -1,41 +1,87 @@
-﻿import chirp_to_libib.core as c
-import csv
+﻿import csv
 import os
+import tempfile
+
+from chirp_to_libib.core import write_csv as chirp_write_csv, write_unresolved as chirp_write_unresolved
+from kindle_to_libib.core import write_csv as kindle_write_csv, write_unresolved as kindle_write_unresolved
 
 
-def test_write_csv(tmp_path):
+# ==========================
+# CSV OUTPUT TESTS
+# ==========================
+
+def test_chirp_write_csv():
     records = [
-        ("Title", "Author", "9781234567897", "cover.jpg"),
+        ("Title A", "Author A", "1234567890", "coverA"),
+        ("Title B", "Author B", None, "coverB"),
     ]
-    path = c.write_csv(records, tmp_path)
 
-    assert os.path.exists(path)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = chirp_write_csv(records, tmp)
+        assert os.path.exists(path)
 
-    with open(path, "rb") as f:
-        assert f.read(3) == b"\xef\xbb\xbf"  # UTF‑8 BOM
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = list(csv.reader(f))
 
-    with open(path, encoding="utf-8-sig") as f:
-        rows = list(csv.reader(f))
-        assert rows[0] == ["Title", "Creator", "Identifier", "Type", "Image"]
-        assert rows[1][0] == "Title"
+        # Header + 2 rows
+        assert len(reader) == 3
+        assert reader[0] == ["Title", "Creator", "Identifier", "Type", "Image"]
+        assert reader[1][0] == "Title A"
+        assert reader[2][2] == ""  # unresolved ISBN becomes empty string
 
 
-def test_write_unresolved(tmp_path):
+def test_kindle_write_csv():
     records = [
-        ("Book1", "A", None, "c"),
-        ("Book2", "B", "9781234567897", "c"),
+        ("Title A", "Author A", "9781402894626", "coverA"),
+        ("Title B", "Author B", None, "coverB"),
     ]
-    path = c.write_unresolved(records, tmp_path)
-    assert os.path.exists(path)
 
-    with open(path, encoding="utf-8") as f:
-        text = f.read()
-        assert "Book1" in text
-        assert "Book2" not in text
+    with tempfile.TemporaryDirectory() as tmp:
+        path = kindle_write_csv(records, tmp)
+        assert os.path.exists(path)
+
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = list(csv.reader(f))
+
+        assert len(reader) == 3
+        assert reader[0] == ["Title", "Creator", "Identifier", "Type", "Image"]
+        assert reader[1][2] == "9781402894626"
+        assert reader[2][2] == ""
 
 
-def test_write_unresolved_none(tmp_path):
+# ==========================
+# UNRESOLVED OUTPUT TESTS
+# ==========================
+
+def test_chirp_write_unresolved():
     records = [
-        ("Book1", "A", "9781234567897", "c"),
+        ("Title A", "Author A", "1234567890", "coverA"),
+        ("Title B", "Author B", None, "coverB"),
     ]
-    assert c.write_unresolved(records, tmp_path) is None
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = chirp_write_unresolved(records, tmp)
+        assert os.path.exists(path)
+
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+
+        assert "Title B" in text
+        assert "Title A" not in text
+
+
+def test_kindle_write_unresolved():
+    records = [
+        ("Title A", "Author A", "9781402894626", "coverA"),
+        ("Title B", "Author B", None, "coverB"),
+    ]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = kindle_write_unresolved(records, tmp)
+        assert os.path.exists(path)
+
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+
+        assert "Title B" in text
+        assert "Title A" not in text

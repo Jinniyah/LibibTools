@@ -6,7 +6,7 @@ authors = [{ name = "Jennifer M" }]
 requires-python = ">=3.10"
 
 [tool.setuptools]
-packages = ["chirp_to_libib", "kindle_to_libib"]
+packages = ["chirp_to_libib", "kindle_to_libib", "lib"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

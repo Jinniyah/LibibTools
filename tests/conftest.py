@@ -1,10 +1,9 @@
 import pytest
 from unittest.mock import MagicMock, patch
-
 import sys
 import os
 
-# Add project root to Python path
+# Ensure project root is on path for pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
@@ -26,13 +25,13 @@ def mock_build_driver(mock_driver):
 
 @pytest.fixture
 def mock_requests_get():
-    """Patch requests.get for Open Library."""
-    with patch("chirp_to_libib.core.requests.get") as mock:
+    """Patch requests.get inside the shared Open Library module."""
+    with patch("lib.openlibrary.requests.get") as mock:
         yield mock
 
 
 @pytest.fixture
 def no_sleep():
-    """Disable time.sleep for fast tests."""
-    with patch("chirp_to_libib.core.time.sleep"):
+    """Disable sleep_between_requests for fast tests."""
+    with patch("lib.openlibrary.sleep_between_requests"):
         yield

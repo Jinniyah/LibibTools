@@ -12,6 +12,7 @@ This repository currently includes **chirp‑to‑libib**, a Python package that
 
 - [Overview](#overview)
 - [Features](#features)
+- [Shared Modules](#shared-modules)
 - [Architecture](#architecture)
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -57,6 +58,12 @@ This tool is designed for reliability, repeatability, and long‑term maintainab
 - 🧪 Automated tests with CI  
 - 📊 Coverage reporting  
 - 🛠 Configurable runtime behavior  
+
+---
+
+## Shared Modules
+The `lib/` directory contains shared logic used by all providers, including
+Open Library ISBN lookup with retry/backoff and title matching.
 
 ---
 
