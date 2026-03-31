@@ -263,9 +263,12 @@ def main():
         log.error("No books were scraped. Exiting.")
         return
 
-    log.info("Found %d book(s). Resolving ISBNs via Open Library…", len(books))
-    records = resolve_isbns(books)
+    log.info("Found %d book(s). Deduplicating…", len(books))
+    records = dedupe_books_by_title(books)
 
+    log.info("Found %d book(s). Resolving ISBNs via Open Library…", len(records))   
+    records = resolve_isbns(records)
+    
     resolved = sum(1 for _, _, isbn, _ in records if isbn)
     unresolved_count = len(records) - resolved
 

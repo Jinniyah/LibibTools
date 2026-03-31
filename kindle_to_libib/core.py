@@ -357,8 +357,9 @@ def main():
     books = scrape_kindle(email, password, max_pages=args.pages)
     del email, password
 
+    log.info("Found %d book(s). Deduplicating…", len(books))
     books = dedupe_books_by_title(books)
-    books = _filter_kindle_books(books)          # <-- actually called now
+    books = _filter_kindle_books(books)
 
     if not books:
         log.error("No books were scraped. Exiting.")
