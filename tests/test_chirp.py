@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 
 from chirp_to_libib.core import (

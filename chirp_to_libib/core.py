@@ -5,7 +5,6 @@ import csv
 import getpass
 import logging
 import os
-import re
 import time
 from datetime import datetime
 from typing import Optional
@@ -20,7 +19,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.remote.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
 
 # ==========================

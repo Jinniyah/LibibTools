@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
 from chirp_to_libib.core import _parse_items, scrape_chirp

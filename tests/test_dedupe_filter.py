@@ -1,5 +1,3 @@
-import pytest
-
 from chirp_to_libib.core import (
     dedupe_books_by_title as chirp_dedupe,
     filter_invalid_books as chirp_filter,
