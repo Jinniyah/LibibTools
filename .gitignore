@@ -8,6 +8,10 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.suo
+*.user
+*.cache
+.vs/
 .venv/
 .env/
 .coverage

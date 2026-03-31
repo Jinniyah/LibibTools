@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: chirp_to_libib
+Version: 0.1.0
+Summary: Scrape Chirp audiobook library and export Libib-compatible CSV
+Author: Jennifer M
+Requires-Python: >=3.10

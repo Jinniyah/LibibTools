@@ -1,0 +1,2 @@
+chirp_to_libib
+kindle_to_libib

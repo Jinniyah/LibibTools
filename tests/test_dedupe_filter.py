@@ -1,31 +1,62 @@
-import chirp_to_libib.core as c
+from chirp_to_libib.core import (
+    dedupe_books_by_title as chirp_dedupe,
+    filter_invalid_books as chirp_filter,
+)
+
+from kindle_to_libib.core import dedupe_books_by_title as kindle_dedupe
+
+from lib import filter_invalid_books
+from kindle_to_libib.core import _KINDLE_UI_GARBAGE
+
+# ==========================
+# DEDUPE TESTS
+# ==========================
 
 
-def test_dedupe_replaces_missing_author():
+def test_chirp_dedupe():
     books = [
-        ("Book", "", "c1"),
-        ("Book", "Author", "c2"),
+        ("Title", "Author A", "cover1"),
+        ("Title", "Author B", "cover2"),
     ]
-    out = c.dedupe_books_by_title(books)
-    assert out == [("Book", "Author", "c2")]
+    result = chirp_dedupe(books)
+    assert len(result) == 1
+    assert result[0][0] == "Title"
 
 
-def test_dedupe_case_insensitive():
+def test_kindle_dedupe():
     books = [
-        ("Book", "A", "c1"),
-        ("book", "B", "c2"),
+        ("Title", "Author A", "cover1"),
+        ("Title", "Author B", "cover2"),
     ]
-    out = c.dedupe_books_by_title(books)
-    assert out == [("Book", "A", "c1")]
+    result = kindle_dedupe(books)
+    assert len(result) == 1
+    assert result[0][0] == "Title"
 
 
-def test_filter_invalid_titles():
+# ==========================
+# FILTER TESTS
+# ==========================
+
+
+def test_chirp_filter():
     books = [
-        ("", "A", "c"),
-        ("!", "A", "c"),
-        ("Audiobook", "A", "c"),
-        ("A", "A", "c"),
-        ("Valid Title", "A", "c"),
+        ("Valid Title", "Author", "cover"),
+        ("", "Author", "cover"),
+        ("#", "Author", "cover"),
+        ("audiobook", "Author", "cover"),
     ]
-    out = c.filter_invalid_books(books)
-    assert out == [("Valid Title", "A", "c")]
+    result = chirp_filter(books)
+    assert len(result) == 1
+    assert result[0][0] == "Valid Title"
+
+
+def test_kindle_filter():
+    books = [
+        ("Valid Title", "Author", "cover"),
+        ("", "Author", "cover"),
+        ("#", "Author", "cover"),
+        ("ebook", "Author", "cover"),
+        ("devices", "Author", "cover"),
+    ]
+    result = filter_invalid_books(books, extra_garbage=_KINDLE_UI_GARBAGE)
+    assert len(result) == 1

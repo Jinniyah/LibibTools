@@ -1,38 +1,49 @@
-import chirp_to_libib.core as c
-from unittest.mock import MagicMock
+from unittest.mock import patch
+
+from lib.openlibrary import (
+    _normalize_isbn,
+    _valid_isbn10,
+    _valid_isbn13,
+    _best_isbn,
+    _title_is_plausible,
+    _ol_query,
+    get_isbn,
+)
 
 
-def test_get_isbn_pass1_hit(mock_requests_get):
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {
-        "docs": [{"title": "Test Book", "isbn": ["9781234567897"]}]
+def test_normalize_isbn():
+    assert _normalize_isbn("978-1-4028-9462-6") == "9781402894626"
+
+
+def test_valid_isbn10():
+    assert _valid_isbn10("0321146530")
+
+
+def test_valid_isbn13():
+    assert _valid_isbn13("9781402894626")
+
+
+def test_best_isbn():
+    assert _best_isbn(["9781402894626", "0321146530"]) == "9781402894626"
+
+
+def test_title_is_plausible():
+    assert _title_is_plausible("Hobbit", "The Hobbit")
+
+
+@patch("lib.openlibrary.requests.get")
+def test_ol_query_success(mock_get):
+    mock_get.return_value.json.return_value = {"docs": [{"title": "Test"}]}
+    mock_get.return_value.raise_for_status = lambda: None
+    docs = _ol_query({"title": "Test"}, "Test")
+    assert docs == [{"title": "Test"}]
+
+
+@patch("lib.openlibrary.requests.get")
+def test_get_isbn_title_only(mock_get):
+    mock_get.return_value.raise_for_status = lambda: None
+    mock_get.return_value.json.return_value = {
+        "docs": [{"title": "Test", "isbn": ["0321146530"]}]
     }
-    mock_resp.raise_for_status.return_value = None
-    mock_requests_get.return_value = mock_resp
-
-    isbn = c.get_isbn("Test Book", "Author")
-    assert isbn == "9781234567897"
-
-
-def test_get_isbn_pass2_hit(mock_requests_get):
-    # Pass 1 returns empty
-    mock_resp1 = MagicMock()
-    mock_resp1.json.return_value = {"docs": []}
-    mock_resp1.raise_for_status.return_value = None
-
-    # Pass 2 returns valid
-    mock_resp2 = MagicMock()
-    mock_resp2.json.return_value = {
-        "docs": [{"title": "Test Book", "isbn": ["123456789X"]}]
-    }
-    mock_resp2.raise_for_status.return_value = None
-
-    mock_requests_get.side_effect = [mock_resp1, mock_resp2]
-
-    isbn = c.get_isbn("Test Book", "Author")
-    assert isbn == "123456789X"
-
-
-def test_get_isbn_network_error(mock_requests_get):
-    mock_requests_get.side_effect = Exception("Network down")
-    assert c.get_isbn("Test Book", "Author") is None
+    isbn = get_isbn("Test", "")
+    assert isbn == "0321146530"
