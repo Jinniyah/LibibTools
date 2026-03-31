@@ -16,7 +16,10 @@ def test_dedupe_books_by_title():
     assert len(result) == 1
 
 
-_KINDLE_UI_GARBAGE = frozenset({"content", "devices", "preferences", "privacy settings"})
+_KINDLE_UI_GARBAGE = frozenset(
+    {"content", "devices", "preferences", "privacy settings"}
+)
+
 
 def test_filter_invalid_books():
     books = [

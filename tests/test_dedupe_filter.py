@@ -3,17 +3,15 @@ from chirp_to_libib.core import (
     filter_invalid_books as chirp_filter,
 )
 
-from kindle_to_libib.core import (
-    dedupe_books_by_title as kindle_dedupe
-)
+from kindle_to_libib.core import dedupe_books_by_title as kindle_dedupe
 
 from lib import filter_invalid_books
 from kindle_to_libib.core import _KINDLE_UI_GARBAGE
 
-
 # ==========================
 # DEDUPE TESTS
 # ==========================
+
 
 def test_chirp_dedupe():
     books = [
@@ -38,6 +36,7 @@ def test_kindle_dedupe():
 # ==========================
 # FILTER TESTS
 # ==========================
+
 
 def test_chirp_filter():
     books = [

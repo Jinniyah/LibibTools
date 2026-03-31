@@ -11,7 +11,12 @@ from datetime import datetime
 from typing import Optional
 from collections.abc import Iterable
 
-from lib import get_isbn, sleep_between_requests, dedupe_books_by_title, filter_invalid_books
+from lib import (
+    get_isbn,
+    sleep_between_requests,
+    dedupe_books_by_title,
+    filter_invalid_books,
+)
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -45,6 +50,7 @@ log = logging.getLogger(__name__)
 # CLI
 # ==========================
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export your Chirp audiobook library to a Libib-compatible CSV."
@@ -54,9 +60,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default=".", metavar="PATH")
     return parser.parse_args()
 
+
 # ==========================
 # CREDENTIALS
 # ==========================
+
 
 def _prompt_credentials() -> tuple[str, str]:
     email = os.environ.get("CHIRP_EMAIL") or input("Enter your Chirp email: ").strip()
@@ -67,9 +75,11 @@ def _prompt_credentials() -> tuple[str, str]:
         raise ValueError("Both email and password are required.")
     return email, password
 
+
 # ==========================
 # CHIRP SCRAPING
 # ==========================
+
 
 def _build_driver() -> webdriver.Chrome:
     options = Options()
@@ -79,6 +89,7 @@ def _build_driver() -> webdriver.Chrome:
     options.add_argument("--window-size=1920,1080")
     service = Service(ChromeDriverManager().install())
     return webdriver.Chrome(service=service, options=options)
+
 
 def _login(driver: webdriver.Chrome, email: str, password: str) -> None:
     log.info("Navigating to Chirp login page…")
@@ -96,6 +107,7 @@ def _login(driver: webdriver.Chrome, email: str, password: str) -> None:
     )
     log.info("Login successful.")
 
+
 def _extract_cover_url(img_element: WebElement) -> str:
     srcset = img_element.get_attribute("srcset")
     if srcset:
@@ -103,9 +115,11 @@ def _extract_cover_url(img_element: WebElement) -> str:
         return last_entry.split()[0]
     return img_element.get_attribute("src") or ""
 
+
 def _output_path(directory: str, filename: str) -> str:
     os.makedirs(directory, exist_ok=True)
     return os.path.join(directory, filename)
+
 
 def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
     books = []
@@ -137,6 +151,7 @@ def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
             log.debug("Skipping item due to parse error: %s", exc)
     return books
 
+
 def scrape_chirp(email: str, password: str, max_pages: Optional[int]):
     driver = _build_driver()
     try:
@@ -163,7 +178,9 @@ def scrape_chirp(email: str, password: str, max_pages: Optional[int]):
             page_books = _parse_items(items)
             books.extend(page_books)
 
-            log.info("  → %d book(s) on this page; %d total.", len(page_books), len(books))
+            log.info(
+                "  → %d book(s) on this page; %d total.", len(page_books), len(books)
+            )
 
             if max_pages is not None and page_number >= max_pages:
                 log.info("Reached --pages limit (%d) — stopping.", max_pages)
@@ -188,6 +205,7 @@ def scrape_chirp(email: str, password: str, max_pages: Optional[int]):
 # ISBN RESOLUTION (UPDATED)
 # ==========================
 
+
 def resolve_isbns(books):
     total = len(books)
     records = []
@@ -201,15 +219,16 @@ def resolve_isbns(books):
         if idx % ISBN_LOG_INTERVAL == 0 or idx == total:
             resolved = sum(1 for _, _, i, _ in records if i)
             log.info(
-                "ISBN progress: %d/%d looked up, %d resolved.",
-                idx, total, resolved
+                "ISBN progress: %d/%d looked up, %d resolved.", idx, total, resolved
             )
 
     return records
 
+
 # ==========================
 # OUTPUT
 # ==========================
+
 
 def write_csv(records, output_dir):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -222,6 +241,7 @@ def write_csv(records, output_dir):
             writer.writerow([title, author, isbn or "", LIBIB_TYPE, cover])
 
     return path
+
 
 def write_unresolved(records, output_dir):
     unresolved = [(t, a) for t, a, isbn, _ in records if not isbn]
@@ -239,9 +259,11 @@ def write_unresolved(records, output_dir):
 
     return path
 
+
 # ==========================
 # MAIN PIPELINE
 # ==========================
+
 
 def main():
     args = parse_args()
@@ -255,7 +277,7 @@ def main():
     books = scrape_chirp(email, password, max_pages=args.pages)
 
     del email, password
-        
+
     books = filter_invalid_books(books)
 
     if not books:
@@ -265,15 +287,17 @@ def main():
     log.info("Found %d book(s). Deduplicating…", len(books))
     records = dedupe_books_by_title(books)
 
-    log.info("Found %d book(s). Resolving ISBNs via Open Library…", len(records))   
+    log.info("Found %d book(s). Resolving ISBNs via Open Library…", len(records))
     records = resolve_isbns(records)
-    
+
     resolved = sum(1 for _, _, isbn, _ in records if isbn)
     unresolved_count = len(records) - resolved
 
     log.info(
         "ISBN resolution complete: %d/%d resolved, %d unresolved.",
-        resolved, len(records), unresolved_count
+        resolved,
+        len(records),
+        unresolved_count,
     )
 
     if args.dry_run:

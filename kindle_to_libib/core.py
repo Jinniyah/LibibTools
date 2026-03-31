@@ -10,7 +10,12 @@ from datetime import datetime
 from typing import Optional
 from collections.abc import Iterable
 
-from lib import get_isbn, sleep_between_requests, dedupe_books_by_title, filter_invalid_books
+from lib import (
+    get_isbn,
+    sleep_between_requests,
+    dedupe_books_by_title,
+    filter_invalid_books,
+)
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -34,7 +39,9 @@ KINDLE_LIBRARY_URL: str = (
     "https://www.amazon.com/hz/mycd/digital-console/contentlist/booksAll/dateDsc/"
 )
 
-_KINDLE_UI_GARBAGE = frozenset({"content", "devices", "preferences", "privacy settings"})
+_KINDLE_UI_GARBAGE = frozenset(
+    {"content", "devices", "preferences", "privacy settings"}
+)
 
 # ==========================
 # LOGGING
@@ -51,6 +58,7 @@ log = logging.getLogger(__name__)
 # CLI
 # ==========================
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export your Kindle ebook library to a Libib-compatible CSV."
@@ -60,9 +68,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default=".", metavar="PATH")
     return parser.parse_args()
 
+
 # ==========================
 # CREDENTIALS
 # ==========================
+
 
 def _prompt_credentials() -> tuple[str, str]:
     email = os.environ.get("KINDLE_EMAIL") or input("Enter your Amazon email: ").strip()
@@ -73,9 +83,11 @@ def _prompt_credentials() -> tuple[str, str]:
         raise ValueError("Both email and password are required.")
     return email, password
 
+
 # ==========================
 # KINDLE SCRAPING
 # ==========================
+
 
 def _build_driver() -> webdriver.Chrome:
     options = Options()
@@ -85,6 +97,7 @@ def _build_driver() -> webdriver.Chrome:
     options.add_argument("--window-size=1920,1080")
     service = Service(ChromeDriverManager().install())
     return webdriver.Chrome(service=service, options=options)
+
 
 def _login(driver: webdriver.Chrome, email: str, password: str) -> None:
     log.info("Navigating to Kindle content library…")
@@ -136,6 +149,7 @@ def _login(driver: webdriver.Chrome, email: str, password: str) -> None:
     )
     log.info("Login successful or already authenticated; content list visible.")
 
+
 def _extract_cover_url(img_element: WebElement) -> str:
     srcset = img_element.get_attribute("srcset")
     if srcset:
@@ -143,9 +157,11 @@ def _extract_cover_url(img_element: WebElement) -> str:
         return last_entry.split()[0]
     return img_element.get_attribute("src") or ""
 
+
 def _output_path(directory: str, filename: str) -> str:
     os.makedirs(directory, exist_ok=True)
     return os.path.join(directory, filename)
+
 
 def _save_debug_snapshot(driver: WebDriver, tag: str) -> None:
     try:
@@ -162,6 +178,7 @@ def _save_debug_snapshot(driver: WebDriver, tag: str) -> None:
     except Exception:
         log.debug("Debug snapshot failed (ignored).")
 
+
 def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
     books = []
     for item in items:
@@ -170,7 +187,8 @@ def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
             title = ""
             try:
                 title_el = item.find_element(
-                    By.CSS_SELECTOR, "[data-testid='title'], [data-testid='entity-title']"
+                    By.CSS_SELECTOR,
+                    "[data-testid='title'], [data-testid='entity-title']",
                 )
                 title = title_el.text.strip()
             except Exception:
@@ -184,7 +202,7 @@ def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
                         title_el = item.find_element(
                             By.XPATH,
                             ".//a[normalize-space(text())!=''][1] | "
-                            ".//span[normalize-space(text())!=''][1]"
+                            ".//span[normalize-space(text())!=''][1]",
                         )
                         title = title_el.text.strip()
                     except Exception:
@@ -194,8 +212,7 @@ def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
             author = ""
             try:
                 author_el = item.find_element(
-                    By.CSS_SELECTOR,
-                    "div.information_row[id^='content-author']"
+                    By.CSS_SELECTOR, "div.information_row[id^='content-author']"
                 )
                 author = author_el.text.strip()
             except Exception:
@@ -213,7 +230,7 @@ def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
                 img_el = item.find_element(
                     By.CSS_SELECTOR,
                     "div[class*='DigitalEntitySummary-module_image_container'] img, "
-                    "img[class*='DigitalEntitySummary-module_image']"
+                    "img[class*='DigitalEntitySummary-module_image']",
                 )
                 cover = _extract_cover_url(img_el)
             except Exception:
@@ -230,6 +247,7 @@ def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
             log.debug("Skipping item due to parse error: %s", exc)
 
     return books
+
 
 def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
     driver = _build_driver()
@@ -257,7 +275,9 @@ def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
             page_books = _parse_items(items)
             books.extend(page_books)
 
-            log.info(" → %d book(s) on this page; %d total.", len(page_books), len(books))
+            log.info(
+                " → %d book(s) on this page; %d total.", len(page_books), len(books)
+            )
 
             if max_pages is not None and page_number >= max_pages:
                 log.info("Reached --pages limit (%d) — stopping.", max_pages)
@@ -267,7 +287,7 @@ def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
                 By.CSS_SELECTOR,
                 "button[aria-label='Next page']:not([disabled]), "
                 "button[aria-label='Next']:not([disabled]), "
-                "li.a-last:not(.a-disabled) a"
+                "li.a-last:not(.a-disabled) a",
             )
             if not next_candidates:
                 log.info("No further pages found.")
@@ -286,28 +306,30 @@ def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
 # ISBN RESOLUTION (UPDATED)
 # ==========================
 
+
 def resolve_isbns(books):
     total = len(books)
     records = []
 
     for idx, (title, author, cover) in enumerate(books, start=1):
-        isbn = get_isbn(title, author)          # <-- SHARED LOOKUP
-        sleep_between_requests()                # <-- SHARED DELAY
+        isbn = get_isbn(title, author)  # <-- SHARED LOOKUP
+        sleep_between_requests()  # <-- SHARED DELAY
 
         records.append((title, author, isbn, cover))
 
         if idx % ISBN_LOG_INTERVAL == 0 or idx == total:
             resolved = sum(1 for _, _, i, _ in records if i)
             log.info(
-                "ISBN progress: %d/%d looked up, %d resolved.",
-                idx, total, resolved
+                "ISBN progress: %d/%d looked up, %d resolved.", idx, total, resolved
             )
 
     return records
 
+
 # ==========================
 # OUTPUT
 # ==========================
+
 
 def write_csv(records, output_dir):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -320,6 +342,7 @@ def write_csv(records, output_dir):
             writer.writerow([title, author, isbn or "", LIBIB_TYPE, cover])
 
     return path
+
 
 def write_unresolved(records, output_dir):
     unresolved = [(t, a) for t, a, isbn, _ in records if not isbn]
@@ -337,9 +360,11 @@ def write_unresolved(records, output_dir):
 
     return path
 
+
 # ==========================
 # MAIN PIPELINE
 # ==========================
+
 
 def _filter_kindle_books(books):
     return filter_invalid_books(books, extra_garbage=_KINDLE_UI_GARBAGE)
@@ -372,7 +397,9 @@ def main():
 
     log.info(
         "ISBN resolution complete: %d/%d resolved, %d unresolved.",
-        resolved, len(records), unresolved_count
+        resolved,
+        len(records),
+        unresolved_count,
     )
 
     if args.dry_run:

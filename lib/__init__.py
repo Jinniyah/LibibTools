@@ -8,8 +8,8 @@ from lib.openlibrary import (
 )
 
 __all__ = [
-    "get_isbn", 
-    "sleep_between_requests", 
-    "dedupe_books_by_title", 
-    "filter_invalid_books"
+    "get_isbn",
+    "sleep_between_requests",
+    "dedupe_books_by_title",
+    "filter_invalid_books",
 ]

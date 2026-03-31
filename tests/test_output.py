@@ -2,13 +2,19 @@
 import os
 import tempfile
 
-from chirp_to_libib.core import write_csv as chirp_write_csv, write_unresolved as chirp_write_unresolved
-from kindle_to_libib.core import write_csv as kindle_write_csv, write_unresolved as kindle_write_unresolved
-
+from chirp_to_libib.core import (
+    write_csv as chirp_write_csv,
+    write_unresolved as chirp_write_unresolved,
+)
+from kindle_to_libib.core import (
+    write_csv as kindle_write_csv,
+    write_unresolved as kindle_write_unresolved,
+)
 
 # ==========================
 # CSV OUTPUT TESTS
 # ==========================
+
 
 def test_chirp_write_csv():
     records = [
@@ -52,6 +58,7 @@ def test_kindle_write_csv():
 # ==========================
 # UNRESOLVED OUTPUT TESTS
 # ==========================
+
 
 def test_chirp_write_unresolved():
     records = [

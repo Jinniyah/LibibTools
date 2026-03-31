@@ -30,6 +30,7 @@ ISBN_DELAY_RANGE = (0.8, 1.6)
 # ISBN Normalization & Validation
 # -----------------------------
 
+
 def _normalize_isbn(raw: str) -> str:
     return re.sub(r"[^0-9Xx]", "", raw or "").upper()
 
@@ -64,7 +65,10 @@ def _best_isbn(isbns: list[str]) -> Optional[str]:
 # Title Matching
 # -----------------------------
 
-def _title_is_plausible(query_title: str, returned_title: str, threshold: float = 0.55) -> bool:
+
+def _title_is_plausible(
+    query_title: str, returned_title: str, threshold: float = 0.55
+) -> bool:
     """
     Determine whether a returned title plausibly matches the query.
     """
@@ -88,6 +92,7 @@ def _title_is_plausible(query_title: str, returned_title: str, threshold: float 
 # -----------------------------
 # Open Library Query with Retry
 # -----------------------------
+
 
 def _ol_query(params: dict, title_for_log: str) -> list[dict]:
     """Execute one Open Library search with retries and exponential backoff."""
@@ -121,6 +126,7 @@ def _ol_query(params: dict, title_for_log: str) -> list[dict]:
 # ISBN Selection Logic
 # -----------------------------
 
+
 def _pick_isbn_from_docs(docs: list[dict], title: str) -> Optional[str]:
     """Two-pass ISBN selection."""
     # Pass 1: title plausibility check
@@ -142,6 +148,7 @@ def _pick_isbn_from_docs(docs: list[dict], title: str) -> Optional[str]:
 # -----------------------------
 # Public API
 # -----------------------------
+
 
 def get_isbn(title: str, author: str) -> Optional[str]:
     """
@@ -170,8 +177,9 @@ def sleep_between_requests() -> None:
     time.sleep(random.uniform(*ISBN_DELAY_RANGE))
 
 
-
-def dedupe_books_by_title(books: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+def dedupe_books_by_title(
+    books: list[tuple[str, str, str]],
+) -> list[tuple[str, str, str]]:
     """Remove duplicate titles, preferring entries that have an author."""
     seen: dict[str, int] = {}
     unique: list[tuple[str, str, str]] = []
