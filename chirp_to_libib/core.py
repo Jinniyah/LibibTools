@@ -293,10 +293,10 @@ def main() -> None:
         return
 
     log.info("Found %d book(s). Deduplicating…", len(books))
-    records = dedupe_books_by_title(books)
+    books_deduped = dedupe_books_by_title(books)
 
-    log.info("Found %d book(s). Resolving ISBNs via Open Library…", len(records))
-    records = resolve_isbns(records)
+    log.info("Found %d book(s). Resolving ISBNs via Open Library…", len(books_deduped))
+    records = resolve_isbns(books_deduped)
 
     resolved = sum(1 for _, _, isbn, _ in records if isbn)
     unresolved_count = len(records) - resolved
