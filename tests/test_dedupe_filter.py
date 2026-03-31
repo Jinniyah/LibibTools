@@ -4,8 +4,7 @@ from chirp_to_libib.core import (
 )
 
 from kindle_to_libib.core import (
-    dedupe_books_by_title as kindle_dedupe,
-    filter_invalid_books as kindle_filter,
+    dedupe_books_by_title as kindle_dedupe
 )
 
 from lib import filter_invalid_books
