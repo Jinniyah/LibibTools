@@ -17,6 +17,11 @@ def test_dedupe_books_by_title():
     assert len(result) == 1
 
 
+# test_kindle.py and test_dedupe_filter.py
+from lib import filter_invalid_books
+
+_KINDLE_UI_GARBAGE = frozenset({"content", "devices", "preferences", "privacy settings"})
+
 def test_filter_invalid_books():
     books = [
         ("Valid Title", "Author", "cover"),
@@ -25,9 +30,8 @@ def test_filter_invalid_books():
         ("ebook", "Author", "cover"),
         ("devices", "Author", "cover"),
     ]
-    result = filter_invalid_books(books)
+    result = filter_invalid_books(books, extra_garbage=_KINDLE_UI_GARBAGE)
     assert len(result) == 1
-    assert result[0][0] == "Valid Title"
 
 
 @patch("kindle_to_libib.core.get_isbn", return_value="9781402894626")

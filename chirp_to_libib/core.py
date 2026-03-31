@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional
 from collections.abc import Iterable
 
-from lib import get_isbn, sleep_between_requests
+from lib import get_isbn, sleep_between_requests, dedupe_books_by_title, filter_invalid_books
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -184,49 +184,6 @@ def scrape_chirp(email: str, password: str, max_pages: Optional[int]):
     finally:
         driver.quit()
 
-# ==========================
-# DEDUPLICATION & FILTERING
-# ==========================
-
-def dedupe_books_by_title(books):
-    seen = {}
-    unique = []
-    removed = replaced = 0
-
-    for title, author, cover in books:
-        key = (title or "").strip().lower()
-        if key not in seen:
-            seen[key] = len(unique)
-            unique.append((title, author, cover))
-        else:
-            idx = seen[key]
-            _, existing_author, _ = unique[idx]
-            if not existing_author and author:
-                unique[idx] = (title, author, cover)
-                replaced += 1
-            else:
-                removed += 1
-
-    if removed or replaced:
-        log.info("Deduplication: %d removed, %d replaced.", removed, replaced)
-    return unique
-
-def filter_invalid_books(books):
-    valid = []
-    removed = 0
-    for title, author, cover in books:
-        t = (title or "").strip()
-        if not t or len(re.findall(r"[A-Za-z0-9]", t)) < 2:
-            removed += 1
-            continue
-        if t.lower() == "audiobook":
-            removed += 1
-            continue
-        valid.append((title, author, cover))
-
-    if removed:
-        log.info("Filtered %d invalid book(s) before ISBN lookup.", removed)
-    return valid
 
 # ==========================
 # ISBN RESOLUTION (UPDATED)
@@ -299,8 +256,7 @@ def main():
     books = scrape_chirp(email, password, max_pages=args.pages)
 
     del email, password
-
-    books = dedupe_books_by_title(books)
+        
     books = filter_invalid_books(books)
 
     if not books:

@@ -35,11 +35,17 @@ def _normalize_isbn(raw: str) -> str:
 
 
 def _valid_isbn13(s: str) -> bool:
-    return len(s) == 13 and s.isdigit()
+    if len(s) != 13 or not s.isdigit():
+        return False
+    total = sum(int(d) * (1 if i % 2 == 0 else 3) for i, d in enumerate(s))
+    return total % 10 == 0
 
 
 def _valid_isbn10(s: str) -> bool:
-    return len(s) == 10 and s[:-1].isdigit() and (s[-1].isdigit() or s[-1] == "X")
+    if len(s) != 10 or not s[:-1].isdigit() or not (s[-1].isdigit() or s[-1] == "X"):
+        return False
+    total = sum((10 - i) * (10 if s[i] == "X" else int(s[i])) for i in range(10))
+    return total % 11 == 0
 
 
 def _best_isbn(isbns: list[str]) -> Optional[str]:
@@ -162,3 +168,63 @@ def get_isbn(title: str, author: str) -> Optional[str]:
 def sleep_between_requests() -> None:
     """Randomized delay to avoid rate-limiting."""
     time.sleep(random.uniform(*ISBN_DELAY_RANGE))
+
+
+
+def dedupe_books_by_title(books: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+    """Remove duplicate titles, preferring entries that have an author."""
+    seen: dict[str, int] = {}
+    unique: list[tuple[str, str, str]] = []
+    removed = replaced = 0
+
+    for title, author, cover in books:
+        key = (title or "").strip().lower()
+        if key not in seen:
+            seen[key] = len(unique)
+            unique.append((title, author, cover))
+        else:
+            idx = seen[key]
+            _, existing_author, _ = unique[idx]
+            if not existing_author and author:
+                unique[idx] = (title, author, cover)
+                replaced += 1
+            else:
+                removed += 1
+
+    if removed or replaced:
+        log.info("Deduplication: %d removed, %d replaced.", removed, replaced)
+    return unique
+
+
+def filter_invalid_books(
+    books: list[tuple[str, str, str]],
+    extra_garbage: frozenset[str] = frozenset(),
+) -> list[tuple[str, str, str]]:
+    """
+    Drop entries with missing, trivial, or garbage titles.
+
+    Pass ``extra_garbage`` to add platform-specific junk titles
+    (e.g. Kindle UI strings) without touching shared logic.
+    """
+    _BASE_GARBAGE = frozenset({"audiobook", "book", "ebook"})
+    garbage = _BASE_GARBAGE | extra_garbage
+
+    valid: list[tuple[str, str, str]] = []
+    removed = 0
+
+    for title, author, cover in books:
+        t = (title or "").strip()
+        if not t or len(re.findall(r"[A-Za-z0-9]", t)) < 2:
+            removed += 1
+            continue
+        if t.lower() in garbage:
+            removed += 1
+            continue
+        if re.match(r"^[\W_]+$", t):
+            removed += 1
+            continue
+        valid.append((title, author, cover))
+
+    if removed:
+        log.info("Filtered %d invalid book(s) before ISBN lookup.", removed)
+    return valid

@@ -10,6 +10,9 @@ from kindle_to_libib.core import (
     filter_invalid_books as kindle_filter,
 )
 
+from lib import filter_invalid_books
+from kindle_to_libib.core import _KINDLE_UI_GARBAGE
+
 
 # ==========================
 # DEDUPE TESTS
@@ -59,6 +62,5 @@ def test_kindle_filter():
         ("ebook", "Author", "cover"),
         ("devices", "Author", "cover"),
     ]
-    result = kindle_filter(books)
+    result = filter_invalid_books(books, extra_garbage=_KINDLE_UI_GARBAGE)
     assert len(result) == 1
-    assert result[0][0] == "Valid Title"

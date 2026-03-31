@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional
 from collections.abc import Iterable
 
-from lib import get_isbn, sleep_between_requests
+from lib import get_isbn, sleep_between_requests, dedupe_books_by_title, filter_invalid_books
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -34,6 +34,8 @@ LIBIB_TYPE = "kindle,ebook"
 KINDLE_LIBRARY_URL: str = (
     "https://www.amazon.com/hz/mycd/digital-console/contentlist/booksAll/dateDsc/"
 )
+
+_KINDLE_UI_GARBAGE = frozenset({"content", "devices", "preferences", "privacy settings"})
 
 # ==========================
 # LOGGING
@@ -280,64 +282,6 @@ def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
     finally:
         driver.quit()
 
-# ==========================
-# DEDUPLICATION & FILTERING
-# ==========================
-
-def dedupe_books_by_title(books):
-    seen = {}
-    unique = []
-    removed = replaced = 0
-
-    for title, author, cover in books:
-        key = (title or "").strip().lower()
-        if key not in seen:
-            seen[key] = len(unique)
-            unique.append((title, author, cover))
-        else:
-            idx = seen[key]
-            _, existing_author, _ = unique[idx]
-            if not existing_author and author:
-                unique[idx] = (title, author, cover)
-                replaced += 1
-            else:
-                removed += 1
-
-    if removed or replaced:
-        log.info("Deduplication: %d removed, %d replaced.", removed, replaced)
-    return unique
-
-def filter_invalid_books(books):
-    valid = []
-    removed = 0
-
-    UI_GARBAGE = {"content", "devices", "preferences", "privacy settings"}
-
-    for title, author, cover in books:
-        t = (title or "").strip()
-
-        if t.lower() in UI_GARBAGE:
-            removed += 1
-            continue
-
-        if not t or len(re.findall(r"[A-Za-z0-9]", t)) < 2:
-            removed += 1
-            continue
-
-        if t.lower() in {"book", "ebook"}:
-            removed += 1
-            continue
-
-        if re.match(r"^[\W_]+$", t):
-            removed += 1
-            continue
-
-        valid.append((title, author, cover))
-
-    if removed:
-        log.info("Filtered %d invalid book(s) before ISBN lookup.", removed)
-
-    return valid
 
 # ==========================
 # ISBN RESOLUTION (UPDATED)
@@ -398,9 +342,12 @@ def write_unresolved(records, output_dir):
 # MAIN PIPELINE
 # ==========================
 
+def _filter_kindle_books(books):
+    return filter_invalid_books(books, extra_garbage=_KINDLE_UI_GARBAGE)
+
+
 def main():
     args = parse_args()
-
     if args.pages is not None and args.pages < 1:
         raise SystemExit("--pages must be 1 or greater.")
 
@@ -411,7 +358,7 @@ def main():
     del email, password
 
     books = dedupe_books_by_title(books)
-    books = filter_invalid_books(books)
+    books = _filter_kindle_books(books)          # <-- actually called now
 
     if not books:
         log.error("No books were scraped. Exiting.")
