@@ -152,7 +152,9 @@ def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
     return books
 
 
-def scrape_chirp(email: str, password: str, max_pages: Optional[int]) -> list[tuple[str, str, str]]:
+def scrape_chirp(
+    email: str, password: str, max_pages: Optional[int]
+) -> list[tuple[str, str, str]]:
     driver = _build_driver()
     try:
         _login(driver, email, password)
@@ -206,7 +208,9 @@ def scrape_chirp(email: str, password: str, max_pages: Optional[int]) -> list[tu
 # ==========================
 
 
-def resolve_isbns(books: list[tuple[str, str, str]]) -> list[tuple[str, str, Optional[str], str]]:
+def resolve_isbns(
+    books: list[tuple[str, str, str]],
+) -> list[tuple[str, str, Optional[str], str]]:
     total = len(books)
     records = []
 
@@ -230,7 +234,9 @@ def resolve_isbns(books: list[tuple[str, str, str]]) -> list[tuple[str, str, Opt
 # ==========================
 
 
-def write_csv(records: list[tuple[str, str, Optional[str], str]], output_dir: str) -> str:
+def write_csv(
+    records: list[tuple[str, str, Optional[str], str]], output_dir: str
+) -> str:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     path = _output_path(output_dir, f"chirp_to_libib_{timestamp}.csv")
 
@@ -243,7 +249,9 @@ def write_csv(records: list[tuple[str, str, Optional[str], str]], output_dir: st
     return path
 
 
-def write_unresolved(records: list[tuple[str, str, Optional[str], str]], output_dir: str) -> Optional[str]:
+def write_unresolved(
+    records: list[tuple[str, str, Optional[str], str]], output_dir: str
+) -> Optional[str]:
     unresolved = [(t, a) for t, a, isbn, _ in records if not isbn]
     if not unresolved:
         return None
