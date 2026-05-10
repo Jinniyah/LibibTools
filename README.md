@@ -1,10 +1,10 @@
-﻿# LibibTools
+# LibibTools
 
 ![Tests](https://github.com/Jinniyah/LibibTools/actions/workflows/tests.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/coverage-generated-blue)
 
 Tools for automating and enriching personal library management workflows.  
-This repository currently includes two Python packages that scrape your digital book libraries and export Libib‑compatible CSVs:
+This repository includes two Python packages that scrape your digital book libraries and export Libib‑compatible CSVs:
 
 - **chirp‑to‑libib** — scrapes your [Chirp Books](https://www.chirpbooks.com) audiobook library
 - **kindle‑to‑libib** — scrapes your [Amazon Kindle](https://www.amazon.com/hz/mycd/digital-console/contentlist/booksAll/dateDsc/) ebook library
@@ -42,11 +42,10 @@ Both tools share a common `lib/` layer for ISBN resolution, deduplication, and f
 
 LibibTools automates the process of exporting your digital book libraries into a format compatible with **Libib**, including:
 
-- Automated login via Selenium
-- Full multi-page library scraping
+- Browser-based library scraping via Selenium
 - ISBN lookup via Open Library with retry and fallback logic
 - High‑resolution cover URL extraction
-- CSV generation (UTF‑8 with BOM)
+- Full 28-column Libib-compatible CSV generation (UTF‑8 with BOM)
 - Unresolved ISBN reporting
 
 Both scrapers share a common library (`lib/`) for all ISBN resolution, deduplication, and filtering logic, keeping provider-specific code minimal and focused.
@@ -55,15 +54,17 @@ Both scrapers share a common library (`lib/`) for all ISBN resolution, deduplica
 
 # Features
 
-- Secure credential handling (env vars or interactive prompt)
+- Manual login support for sites with bot-detection (Chirp)
+- Automated login for sites that support it (Kindle)
+- Secure credential handling (env vars or interactive prompt) for Kindle
 - Multi‑page scraping with configurable page limits
 - ISBN resolution with author+title and title-only fallback
-- Standards‑compliant CSV output
-- Full‑resolution cover URLs
+- Full 28-column Libib-compatible CSV output
+- Full‑resolution cover URLs stored in the `notes` field
 - Deduplication and invalid entry filtering
 - Automated tests with CI
 - Coverage reporting
-- Configurable runtime behavior
+- Configurable runtime behaviour
 
 ---
 
@@ -71,8 +72,8 @@ Both scrapers share a common library (`lib/`) for all ISBN resolution, deduplica
 
 The `lib/` directory contains shared logic used by all providers:
 
-- **`lib/openlibrary.py`** — Open Library ISBN lookup with exponential backoff, title plausibility matching, and ISBN-10/ISBN-13 validation
-- **`lib/__init__.py`** — Re-exports `get_isbn`, `sleep_between_requests`, `dedupe_books_by_title`, and `filter_invalid_books` for clean provider imports
+- **`lib/openlibrary.py`** — Open Library ISBN lookup with exponential backoff, title plausibility matching, ISBN-10/ISBN-13 validation, shared `LIBIB_HEADERS` schema, and `classify_identifier()` for routing identifiers to the correct CSV column
+- **`lib/__init__.py`** — Re-exports all shared symbols for clean provider imports
 
 ---
 
@@ -82,7 +83,7 @@ The `lib/` directory contains shared logic used by all providers:
 +---------------------------+     +---------------------------+
 |  chirp_to_libib CLI       |     |  kindle_to_libib CLI      |
 |  __main__.py / core.py    |     |  __main__.py / core.py    |
-|  - Selenium login         |     |  - Selenium login         |
+|  - Manual login (browser) |     |  - Automated login        |
 |  - Chirp page scraping    |     |  - Kindle page scraping   |
 +------------+--------------+     +-------------+-------------+
              |                                  |
@@ -91,6 +92,8 @@ The `lib/` directory contains shared logic used by all providers:
                               v
              +----------------+-----------------+
              |            lib/                  |
+             |  - LIBIB_HEADERS schema          |
+             |  - classify_identifier()         |
              |  - ISBN lookup (Open Library)    |
              |  - Retry / exponential backoff   |
              |  - Title plausibility matching   |
@@ -101,7 +104,7 @@ The `lib/` directory contains shared logic used by all providers:
                               v
              +----------------------------------+
              |         Output Artifacts         |
-             |  CSV + unresolved ISBN log       |
+             |  28-column CSV + unresolved log  |
              +----------------------------------+
 ```
 
@@ -139,31 +142,21 @@ pip install -r requirements.txt
 
 # Credentials
 
-Set credentials as environment variables before running. If not set, the script will prompt interactively.
+## Chirp
 
-### Chirp
+Chirp uses bot-detection that blocks automated login. **No credentials are required** — the script opens the Chirp login page in a browser window and pauses, letting you log in manually. Once you are logged in and your library is visible, press Enter in the terminal to continue.
 
-#### macOS / Linux
-```bash
-export CHIRP_EMAIL="you@example.com"
-export CHIRP_PASSWORD="yourpassword"
-```
+## Kindle
 
-#### Windows
-```cmd
-set CHIRP_EMAIL=you@example.com
-set CHIRP_PASSWORD=yourpassword
-```
+Kindle supports automated login. Set credentials as environment variables before running. If not set, the script will prompt interactively.
 
-### Kindle
-
-#### macOS / Linux
+### macOS / Linux
 ```bash
 export KINDLE_EMAIL="you@example.com"
 export KINDLE_PASSWORD="yourpassword"
 ```
 
-#### Windows
+### Windows
 ```cmd
 set KINDLE_EMAIL=you@example.com
 set KINDLE_PASSWORD=yourpassword
@@ -173,12 +166,16 @@ set KINDLE_PASSWORD=yourpassword
 
 # Usage
 
-### Chirp — Full scrape
+## Chirp
+
 ```bash
 python -m chirp_to_libib
 ```
 
-### Kindle — Full scrape
+When the browser opens, log in to Chirp manually (completing any CAPTCHA if shown). Once your library or home page is fully loaded, press Enter in the terminal.
+
+## Kindle
+
 ```bash
 python -m kindle_to_libib
 ```
@@ -233,13 +230,16 @@ Both providers support the same CLI flags:
 
 ### CSV Columns
 
-| Column | Description |
-|--------|-------------|
-| Title | Book title |
-| Creator | Author(s) |
-| Identifier | ISBN‑13 (preferred) or ISBN‑10 |
-| Type | `chirp,audiobook` for Chirp; `kindle,ebook` for Kindle |
-| Image | Full‑resolution cover URL |
+Both tools produce a full Libib-compatible CSV with all 28 import columns. Only the following fields are populated; all others are left empty for you to fill in Libib:
+
+| Column | Populated from |
+|--------|----------------|
+| `title` | Book title |
+| `creators` | Author(s) |
+| `upc_isbn10` | ISBN-10 or UPC (if identifier is 10 characters) |
+| `ean_isbn13` | ISBN-13 or EAN (if identifier is 13 digits) |
+| `tags` | `chirp,audiobook` for Chirp; `kindle,ebook` for Kindle |
+| `notes` | Full-resolution cover image URL |
 
 ---
 
@@ -259,9 +259,16 @@ Both providers support the same CLI flags:
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `ISBN_DELAY_RANGE` | `(0.8, 1.6)` | Randomized delay range between API requests (seconds) |
+| `ISBN_DELAY_RANGE` | `(0.8, 1.6)` | Randomised delay between Open Library API requests (seconds) |
 
-### `chirp_to_libib/core.py` and `kindle_to_libib/core.py`
+### `chirp_to_libib/core.py`
+
+| Constant | Default | Description |
+|----------|---------|-------------|
+| `ISBN_LOG_INTERVAL` | `25` | Log ISBN progress every N books |
+| `PAGE_WAIT_TIMEOUT` | `30` | Selenium wait timeout after manual login (seconds) |
+
+### `kindle_to_libib/core.py`
 
 | Constant | Default | Description |
 |----------|---------|-------------|
@@ -287,11 +294,7 @@ pytest
 ### Run coverage
 
 ```bash
-# Chirp
-pytest --cov=chirp_to_libib --cov-report=term-missing
-
-# Kindle
-pytest --cov=kindle_to_libib --cov-report=term-missing
+pytest --cov=chirp_to_libib --cov=kindle_to_libib --cov=lib --cov-report=term-missing
 ```
 
 ### Linting
@@ -318,9 +321,9 @@ mypy chirp_to_libib kindle_to_libib lib
 
 ```bash
 make test        # run tests
-make lint        # run ruff
+make lint        # run ruff and black format check
 make format      # run black
-make typecheck   # run mypy
+make typecheck   # run mypy across all packages
 make coverage    # run full coverage suite
 ```
 
@@ -328,11 +331,17 @@ make coverage    # run full coverage suite
 
 # Troubleshooting
 
-**Login fails**
-Provider may have updated their login page. Update the relevant selectors in `core.py`.
+**Chirp — CAPTCHA or bot-detection blocking login**
+This is expected. The script opens the browser and pauses for you to log in manually. Complete any CAPTCHA in the browser, wait until your library is visible, then press Enter in the terminal.
+
+**Chirp — "Could not confirm a successful login"**
+You pressed Enter before your library fully loaded. Re-run the script and wait until the page is completely loaded before pressing Enter.
+
+**Kindle — Login fails**
+Amazon may have updated their login page selectors. Update `_login` in `kindle_to_libib/core.py`. You may also need to complete a two-factor authentication step in the browser window before the script can proceed.
 
 **No books scraped**
-HTML structure may have changed. Update parsing logic in `_parse_items`.
+The site's HTML structure may have changed. Update the parsing logic in `_parse_items` in the relevant `core.py`.
 
 **ChromeDriver mismatch**
 ```bash
@@ -348,8 +357,8 @@ Open Library coverage varies by title. Use the unresolved report for manual look
 
 - Only Chirp, Amazon, and Open Library are contacted during a run
 - Output files contain personal library data and are excluded via `.gitignore`
-- Credentials are never written to disk
-- Credentials are deleted from memory immediately after the scrape completes
+- Kindle credentials are never written to disk and are cleared from memory immediately after the scrape completes
+- Chirp requires no credentials — login is performed manually in the browser
 
 ---
 
@@ -393,7 +402,7 @@ Contributions are welcome.
 
 1. Fork the repository
 2. Create a feature branch
-3. Write tests for any new behavior
+3. Write tests for any new behaviour
 4. Ensure linting, formatting, and type checks pass
 5. Submit a pull request
 

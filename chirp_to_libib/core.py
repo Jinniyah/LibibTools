@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+# chirp_to_libib/core.py
+
+from __future__ import annotations
 
 import argparse
 import csv
@@ -12,6 +14,8 @@ from typing import Optional
 from collections.abc import Iterable
 
 from lib import (
+    LIBIB_HEADERS,
+    classify_identifier,
     get_isbn,
     sleep_between_requests,
     dedupe_books_by_title,
@@ -32,7 +36,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 # ==========================
 
 ISBN_LOG_INTERVAL: int = 25
-PAGE_WAIT_TIMEOUT: int = 20
+PAGE_WAIT_TIMEOUT: int = 30  # seconds
 LIBIB_TYPE = "chirp,audiobook"
 
 # ==========================
@@ -83,29 +87,59 @@ def _prompt_credentials() -> tuple[str, str]:
 
 def _build_driver() -> webdriver.Chrome:
     options = Options()
+
+    # Suppress the automation flags that trigger bot-detection on sites like Chirp.
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
+
+    # Standard stability flags.
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
+
     service = Service(ChromeDriverManager().install())
-    return webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(service=service, options=options)
+
+    # Remove the navigator.webdriver property that sites use to fingerprint Selenium.
+    driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument",
+        {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
+    )
+
+    return driver
 
 
 def _login(driver: webdriver.Chrome, email: str, password: str) -> None:
     log.info("Navigating to Chirp login page…")
     driver.get("https://www.chirpbooks.com/users/sign_in")
 
-    WebDriverWait(driver, PAGE_WAIT_TIMEOUT).until(
-        EC.presence_of_element_located((By.ID, "user_email"))
+    # Chirp's bot-detection blocks automated login attempts.
+    # We open the page and let the user log in manually instead.
+    print(
+        "\n[ACTION REQUIRED] The Chirp login page is now open in your browser.\n"
+        "  1. Log in with your credentials (and solve any CAPTCHA if shown).\n"
+        "  2. Wait until your library or home page is fully loaded.\n"
+        "  3. Then come back here and press Enter to continue: ",
+        end="",
+        flush=True,
     )
-    driver.find_element(By.ID, "user_email").send_keys(email)
-    driver.find_element(By.ID, "user_password").send_keys(password)
-    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+    input()
 
-    WebDriverWait(driver, PAGE_WAIT_TIMEOUT).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "a[href='/library']"))
-    )
-    log.info("Login successful.")
+    # Verify we actually landed on an authenticated page.
+    try:
+        WebDriverWait(driver, PAGE_WAIT_TIMEOUT).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "a[href='/library']"))
+        )
+    except Exception:
+        raise RuntimeError(
+            "Could not confirm a successful login. "
+            "Make sure you are fully logged in and your library is visible "
+            "before pressing Enter."
+        )
+
+    log.info("Login confirmed.")
 
 
 def _extract_cover_url(img_element: WebElement) -> str:
@@ -204,7 +238,7 @@ def scrape_chirp(
 
 
 # ==========================
-# ISBN RESOLUTION (UPDATED)
+# ISBN RESOLUTION
 # ==========================
 
 
@@ -234,6 +268,10 @@ def resolve_isbns(
 # ==========================
 
 
+# Full Libib CSV column order — imported from lib
+# LIBIB_HEADERS and classify_identifier are provided by lib.openlibrary
+
+
 def write_csv(
     records: list[tuple[str, str, Optional[str], str]], output_dir: str
 ) -> str:
@@ -241,10 +279,18 @@ def write_csv(
     path = _output_path(output_dir, f"chirp_to_libib_{timestamp}.csv")
 
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Title", "Creator", "Identifier", "Type", "Image"])
+        writer = csv.DictWriter(f, fieldnames=LIBIB_HEADERS)
+        writer.writeheader()
         for title, author, isbn, cover in records:
-            writer.writerow([title, author, isbn or "", LIBIB_TYPE, cover])
+            upc_isbn10, ean_isbn13 = classify_identifier(isbn) if isbn else ("", "")
+            row = {h: "" for h in LIBIB_HEADERS}
+            row["title"] = title
+            row["creators"] = author
+            row["upc_isbn10"] = upc_isbn10
+            row["ean_isbn13"] = ean_isbn13
+            row["tags"] = LIBIB_TYPE
+            row["notes"] = cover
+            writer.writerow(row)
 
     return path
 
@@ -279,12 +325,16 @@ def main() -> None:
     if args.pages is not None and args.pages < 1:
         raise SystemExit("--pages must be 1 or greater.")
 
-    email, password = _prompt_credentials()
+    # Credentials are no longer used for automated login (Chirp's bot-detection
+    # requires manual login). The prompts are kept here in case they are needed
+    # in future, but are commented out for now.
+    # email, password = _prompt_credentials()
 
     log.info("Starting Chirp library scrape…")
-    books = scrape_chirp(email, password, max_pages=args.pages)
+    books = scrape_chirp("", "", max_pages=args.pages)
 
-    del email, password
+    # os.environ.pop("CHIRP_EMAIL", None)
+    # os.environ.pop("CHIRP_PASSWORD", None)
 
     books = filter_invalid_books(books)
 

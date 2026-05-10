@@ -40,7 +40,7 @@ jobs:
 
       - name: Run mypy (static type checking)
         run: |
-          mypy chirp_to_libib
+          mypy chirp_to_libib kindle_to_libib lib
 
       - name: Run tests with coverage
         run: |

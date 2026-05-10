@@ -11,6 +11,8 @@ from typing import Optional
 from collections.abc import Iterable
 
 from lib import (
+    LIBIB_HEADERS,
+    classify_identifier,
     get_isbn,
     sleep_between_requests,
     dedupe_books_by_title,
@@ -24,7 +26,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.remote.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
 
 # ==========================
@@ -163,22 +164,6 @@ def _output_path(directory: str, filename: str) -> str:
     return os.path.join(directory, filename)
 
 
-def _save_debug_snapshot(driver: WebDriver, tag: str) -> None:
-    try:
-        ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        base = f"kindle_debug_{ts}_{tag}"
-        html_path = _output_path(".", base + ".html")
-        img_path = _output_path(".", base + ".png")
-
-        with open(html_path, "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
-
-        driver.save_screenshot(img_path)
-        log.info("Saved debug snapshot: %s and %s", html_path, img_path)
-    except Exception:
-        log.debug("Debug snapshot failed (ignored).")
-
-
 def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
     books = []
     for item in items:
@@ -283,19 +268,25 @@ def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
                 log.info("Reached --pages limit (%d) — stopping.", max_pages)
                 break
 
-            next_candidates = driver.find_elements(
-                By.CSS_SELECTOR,
-                "button[aria-label='Next page']:not([disabled]), "
-                "button[aria-label='Next']:not([disabled]), "
-                "li.a-last:not(.a-disabled) a",
-            )
-            if not next_candidates:
-                log.info("No further pages found.")
-                break
-
-            next_candidates[0].click()
+            # Strategy: Click specific page number if visible, otherwise use "Next" to shift window
+            next_page_num = page_number + 1
+            
+            # Try to find the specific page number link (e.g., "page-2", "page-3")
+            specific_page = driver.find_elements(By.ID, f"page-{next_page_num}")
+            
+            if specific_page:
+                specific_page[0].click()
+            else:
+                # We've exhausted the current window (e.g., finished page 7, need page 8)
+                # Click the "Next" button to shift to the next window (8-14)
+                next_window = driver.find_elements(By.ID, "page-RIGHT_PAGE")
+                if not next_window:
+                    log.info("No further pages found.")
+                    break
+                next_window[0].click()
+            
             page_number += 1
-            time.sleep(2)
+            time.sleep(5)  # Wait for Amazon's dynamic content to swap in
 
         return books
     finally:
@@ -331,15 +322,27 @@ def resolve_isbns(books):
 # ==========================
 
 
+# Full Libib CSV column order — imported from lib
+# LIBIB_HEADERS and classify_identifier are provided by lib.openlibrary
+
+
 def write_csv(records, output_dir):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     path = _output_path(output_dir, f"kindle_to_libib_{timestamp}.csv")
 
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Title", "Creator", "Identifier", "Type", "Image"])
+        writer = csv.DictWriter(f, fieldnames=LIBIB_HEADERS)
+        writer.writeheader()
         for title, author, isbn, cover in records:
-            writer.writerow([title, author, isbn or "", LIBIB_TYPE, cover])
+            upc_isbn10, ean_isbn13 = classify_identifier(isbn) if isbn else ("", "")
+            row = {h: "" for h in LIBIB_HEADERS}
+            row["title"] = title
+            row["creators"] = author
+            row["upc_isbn10"] = upc_isbn10
+            row["ean_isbn13"] = ean_isbn13
+            row["tags"] = LIBIB_TYPE
+            row["notes"] = cover
+            writer.writerow(row)
 
     return path
 
@@ -379,7 +382,11 @@ def main():
 
     log.info("Starting Kindle library scrape…")
     books = scrape_kindle(email, password, max_pages=args.pages)
+
+    # Clear credentials from memory and environment as soon as the scrape completes
     del email, password
+    os.environ.pop("KINDLE_EMAIL", None)
+    os.environ.pop("KINDLE_PASSWORD", None)
 
     log.info("Found %d book(s). Deduplicating…", len(books))
     books = dedupe_books_by_title(books)

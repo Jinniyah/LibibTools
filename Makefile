@@ -7,10 +7,10 @@ lint:
 	ruff format --check .
 
 typecheck:
-	mypy chirp_to_libib
+	mypy chirp_to_libib kindle_to_libib lib
 
 test:
 	pytest
 
 coverage:
-	pytest --cov=chirp_to_libib --cov-report=term-missing
+	pytest --cov=chirp_to_libib --cov=kindle_to_libib --cov=lib --cov-report=term-missing

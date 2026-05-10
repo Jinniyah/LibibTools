@@ -27,6 +27,42 @@ ISBN_DELAY_RANGE = (0.8, 1.6)
 
 
 # -----------------------------
+# Libib CSV schema
+# -----------------------------
+
+# Full ordered column list for Libib CSV import.
+LIBIB_HEADERS: list[str] = [
+    "added", "creators", "began_date", "call_numbers", "completed_date",
+    "copies", "description", "group", "upc_isbn10", "ean_isbn13",
+    "ddc", "lcc", "lccn", "oclc", "lexile", "length_of",
+    "number_of_discs", "aspect_ratio", "notes", "price",
+    "publish_date", "publisher", "rating", "review", "review_date",
+    "status", "tags", "title",
+]
+
+
+def classify_identifier(identifier: str) -> tuple[str, str]:
+    """Return ``(upc_isbn10, ean_isbn13)`` for a raw identifier string.
+
+    Classification rules:
+    - 13 digits (after stripping hyphens) → ISBN-13 / EAN → ``ean_isbn13``
+    - 10 characters (after stripping hyphens, digits + optional trailing X) → ISBN-10 / UPC → ``upc_isbn10``
+    - Anything else → placed in ``upc_isbn10`` as a best-effort fallback
+    - Empty string → both fields empty
+    """
+    stripped = identifier.strip()
+    if not stripped:
+        return "", ""
+    digits_only = stripped.replace("-", "")
+    if len(digits_only) == 13 and digits_only.isdigit():
+        return "", stripped
+    if len(digits_only) == 10:
+        return stripped, ""
+    # Unknown format — best-effort fallback
+    return stripped, ""
+
+
+# -----------------------------
 # ISBN Normalization & Validation
 # -----------------------------
 
@@ -45,7 +81,8 @@ def _valid_isbn13(s: str) -> bool:
 def _valid_isbn10(s: str) -> bool:
     if len(s) != 10 or not s[:-1].isdigit() or not (s[-1].isdigit() or s[-1] == "X"):
         return False
-    total = sum((10 - i) * (10 if s[i] == "X" else int(s[i])) for i in range(10))
+    # X is only legal in position 9 (last); value is 10
+    total = sum((10 - i) * (10 if (i == 9 and s[i] == "X") else int(s[i])) for i in range(10))
     return total % 11 == 0
 
 

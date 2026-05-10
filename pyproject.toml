@@ -1,7 +1,7 @@
 [project]
-name = "chirp_to_libib"
+name = "libibtools"
 version = "0.1.0"
-description = "Scrape Chirp audiobook library and export Libib-compatible CSV"
+description = "Scrape Chirp and Kindle libraries and export Libib-compatible CSVs"
 authors = [{ name = "Jennifer M" }]
 requires-python = ">=3.10"
 
@@ -21,9 +21,11 @@ omit = [
     "chirp_to_libib/core.py:main",
 ]
 
-[tool.ruff.lint]
+[tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "B"]
 ignore = ["E501"]
 
