@@ -105,7 +105,9 @@ def _build_driver() -> webdriver.Chrome:
     # Remove the navigator.webdriver property that sites use to fingerprint Selenium.
     driver.execute_cdp_cmd(
         "Page.addScriptToEvaluateOnNewDocument",
-        {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
+        {
+            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        },
     )
 
     return driver

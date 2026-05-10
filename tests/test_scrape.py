@@ -5,6 +5,7 @@ These tests are designed to run without a live browser or Selenium installation.
 All Selenium names used inside core.py are patched at the module level before
 any calls into _parse_items or scrape_chirp are made.
 """
+
 from unittest.mock import MagicMock, patch
 
 from chirp_to_libib.core import _parse_items, scrape_chirp
@@ -34,9 +35,9 @@ def test_parse_items_basic():
         None if attr == "srcset" else "http://example.com/cover.jpg"
     )
     item.find_element.side_effect = [
-        MagicMock(text="Test Title"),      # title element
+        MagicMock(text="Test Title"),  # title element
         MagicMock(text="By Author Name"),  # byline element
-        img_mock,                          # cover image element
+        img_mock,  # cover image element
     ]
     result = _parse_items([item])
     assert len(result) == 1

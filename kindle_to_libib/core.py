@@ -270,10 +270,10 @@ def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
 
             # Strategy: Click specific page number if visible, otherwise use "Next" to shift window
             next_page_num = page_number + 1
-            
+
             # Try to find the specific page number link (e.g., "page-2", "page-3")
             specific_page = driver.find_elements(By.ID, f"page-{next_page_num}")
-            
+
             if specific_page:
                 specific_page[0].click()
             else:
@@ -284,7 +284,7 @@ def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
                     log.info("No further pages found.")
                     break
                 next_window[0].click()
-            
+
             page_number += 1
             time.sleep(5)  # Wait for Amazon's dynamic content to swap in
 

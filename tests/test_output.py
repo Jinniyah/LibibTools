@@ -53,12 +53,34 @@ def test_classify_unknown_falls_back_to_upc():
 # ==========================
 
 EXPECTED_HEADERS = [
-    "added", "creators", "began_date", "call_numbers", "completed_date",
-    "copies", "description", "group", "upc_isbn10", "ean_isbn13",
-    "ddc", "lcc", "lccn", "oclc", "lexile", "length_of",
-    "number_of_discs", "aspect_ratio", "notes", "price",
-    "publish_date", "publisher", "rating", "review", "review_date",
-    "status", "tags", "title",
+    "added",
+    "creators",
+    "began_date",
+    "call_numbers",
+    "completed_date",
+    "copies",
+    "description",
+    "group",
+    "upc_isbn10",
+    "ean_isbn13",
+    "ddc",
+    "lcc",
+    "lccn",
+    "oclc",
+    "lexile",
+    "length_of",
+    "number_of_discs",
+    "aspect_ratio",
+    "notes",
+    "price",
+    "publish_date",
+    "publisher",
+    "rating",
+    "review",
+    "review_date",
+    "status",
+    "tags",
+    "title",
 ]
 
 
@@ -125,10 +147,28 @@ def test_chirp_write_csv_empty_columns():
         with open(path, newline="", encoding="utf-8-sig") as f:
             rows = list(csv.DictReader(f))
         non_mapped = [
-            "added", "began_date", "call_numbers", "completed_date", "copies",
-            "description", "group", "ddc", "lcc", "lccn", "oclc", "lexile",
-            "length_of", "number_of_discs", "aspect_ratio", "price",
-            "publish_date", "publisher", "rating", "review", "review_date", "status",
+            "added",
+            "began_date",
+            "call_numbers",
+            "completed_date",
+            "copies",
+            "description",
+            "group",
+            "ddc",
+            "lcc",
+            "lccn",
+            "oclc",
+            "lexile",
+            "length_of",
+            "number_of_discs",
+            "aspect_ratio",
+            "price",
+            "publish_date",
+            "publisher",
+            "rating",
+            "review",
+            "review_date",
+            "status",
         ]
         for col in non_mapped:
             assert rows[0][col] == "", f"Expected empty string for column '{col}'"
@@ -192,10 +232,28 @@ def test_kindle_write_csv_empty_columns():
         with open(path, newline="", encoding="utf-8-sig") as f:
             rows = list(csv.DictReader(f))
         non_mapped = [
-            "added", "began_date", "call_numbers", "completed_date", "copies",
-            "description", "group", "ddc", "lcc", "lccn", "oclc", "lexile",
-            "length_of", "number_of_discs", "aspect_ratio", "price",
-            "publish_date", "publisher", "rating", "review", "review_date", "status",
+            "added",
+            "began_date",
+            "call_numbers",
+            "completed_date",
+            "copies",
+            "description",
+            "group",
+            "ddc",
+            "lcc",
+            "lccn",
+            "oclc",
+            "lexile",
+            "length_of",
+            "number_of_discs",
+            "aspect_ratio",
+            "price",
+            "publish_date",
+            "publisher",
+            "rating",
+            "review",
+            "review_date",
+            "status",
         ]
         for col in non_mapped:
             assert rows[0][col] == "", f"Expected empty string for column '{col}'"
