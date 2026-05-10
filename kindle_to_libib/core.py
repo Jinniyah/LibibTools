@@ -234,7 +234,9 @@ def _parse_items(items: Iterable[WebElement]) -> list[tuple[str, str, str]]:
     return books
 
 
-def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
+def scrape_kindle(
+    email: str, password: str, max_pages: Optional[int]
+) -> list[tuple[str, str, str]]:
     driver = _build_driver()
     try:
         _login(driver, email, password)
@@ -298,7 +300,9 @@ def scrape_kindle(email: str, password: str, max_pages: Optional[int]):
 # ==========================
 
 
-def resolve_isbns(books):
+def resolve_isbns(
+    books: list[tuple[str, str, str]],
+) -> list[tuple[str, str, Optional[str], str]]:
     total = len(books)
     records = []
 
@@ -326,7 +330,9 @@ def resolve_isbns(books):
 # LIBIB_HEADERS and classify_identifier are provided by lib.openlibrary
 
 
-def write_csv(records, output_dir):
+def write_csv(
+    records: list[tuple[str, str, Optional[str], str]], output_dir: str
+) -> str:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     path = _output_path(output_dir, f"kindle_to_libib_{timestamp}.csv")
 
@@ -347,7 +353,9 @@ def write_csv(records, output_dir):
     return path
 
 
-def write_unresolved(records, output_dir):
+def write_unresolved(
+    records: list[tuple[str, str, Optional[str], str]], output_dir: str
+) -> Optional[str]:
     unresolved = [(t, a) for t, a, isbn, _ in records if not isbn]
     if not unresolved:
         return None
@@ -369,11 +377,13 @@ def write_unresolved(records, output_dir):
 # ==========================
 
 
-def _filter_kindle_books(books):
+def _filter_kindle_books(
+    books: list[tuple[str, str, str]],
+) -> list[tuple[str, str, str]]:
     return filter_invalid_books(books, extra_garbage=_KINDLE_UI_GARBAGE)
 
 
-def main():
+def main() -> None:
     args = parse_args()
     if args.pages is not None and args.pages < 1:
         raise SystemExit("--pages must be 1 or greater.")
