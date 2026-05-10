@@ -7,9 +7,7 @@ from chirp_to_libib.core import main
 @patch("chirp_to_libib.core.sleep_between_requests")
 @patch("chirp_to_libib.core.get_isbn", return_value="1234567890")
 @patch("chirp_to_libib.core.scrape_chirp")
-@patch("chirp_to_libib.core._prompt_credentials", return_value=("email", "password"))
 def test_pipeline_dry_run(
-    mock_creds,
     mock_scrape,
     mock_get_isbn,
     mock_sleep,
@@ -24,8 +22,8 @@ def test_pipeline_dry_run(
     with patch("sys.argv", ["prog", "--dry-run"]):
         main()
 
-    mock_creds.assert_called_once()
-    mock_scrape.assert_called_once()
+    # Credentials are no longer prompted for Chirp — login is manual via browser.
+    mock_scrape.assert_called_once_with("", "", max_pages=None)
     assert mock_get_isbn.call_count == 2
     mock_write_csv.assert_not_called()
     mock_write_unresolved.assert_not_called()
