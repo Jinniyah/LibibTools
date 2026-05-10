@@ -3,8 +3,8 @@
 ################################################################################
 
 *.vsidx
+# Output CSV files are personal library data — do not commit
 *.csv
-__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -16,4 +16,5 @@ __pycache__/
 .env/
 .coverage
 htmlcov/
-/! OUTPUT
+__pycache__/
+/venv
